@@ -25,12 +25,12 @@ if ( $title ) {
 if ( $attributes ) {
 	foreach ( $attributes as $attribute => $value ) {
 		?>
-		<?php echo esc_html( $attribute ); ?>="<?php echo esc_attr( $value ); ?>"
+		 <?php echo esc_html( $attribute ); ?>="<?php echo esc_attr( $value ); ?>"
 		<?php
 	}
 }
 ?>
-role="link"
+ role="link"
 >
 	<?php
 	echo $content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped

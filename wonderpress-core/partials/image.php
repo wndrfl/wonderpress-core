@@ -32,7 +32,7 @@ if ( $srcset ) {
 		if ( isset( $attributes ) && is_array( $attributes ) ) {
 			foreach ( $attributes as $attribute => $value ) {
 				?>
-				<?php echo esc_html( $attribute ); ?>="<?php echo esc_attr( $value ); ?>"
+				 <?php echo esc_html( $attribute ); ?>="<?php echo esc_attr( $value ); ?>"
 				<?php
 			}
 		}
