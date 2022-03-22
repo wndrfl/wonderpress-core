@@ -18,7 +18,7 @@ if ( $title ) {
 <?php
 if ( $title ) {
 	?>
-	 title="<?php echo esc_attr( $title ); ?>" <?php } ?>
+	  title="<?php echo esc_attr( $title ); ?>" <?php } ?>
 <?php if ( $open_in_new_tab ) { ?>
 	 target="_blank" <?php } ?>
 <?php

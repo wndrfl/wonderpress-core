@@ -128,6 +128,19 @@ class Link extends Abstract_Partial {
 	}
 
 	/**
+	 * A method to manipulate $_attrs before attempting to display.
+	 *
+	 * @return Boolean
+	 */
+	public function prepare_properties_for_display() {
+		if ( empty( $this->_attrs['title'] ) ) {
+			$this->_attrs['title'] = $this->_attrs['content'];
+		}
+
+		return true;
+	}
+
+	/**
 	 * An internal process to merge the property values and HTML bits into a
 	 * usable HTML snippet.
 	 *
