@@ -2,7 +2,7 @@
 /**
 * Plugin Name: Wonderpress Core
 * Description: A toolkit layer for awesome WordPress development and management.
-* Version: 1.0
+* Version: 1.0.0
 * Author: Wonderful
 * Author URI: https://wonderful.io
 **/
@@ -10,6 +10,8 @@
 defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
 
 define( 'WONDERPRESS_CORE_VERSION', '1.0.0');
+
+define( 'WONDERPRESS_CORE_DIRECTORY_NAME', 'wonderpress-core' );
 
 /**
  * This auto-loads a class or trait just when you need it.
@@ -27,7 +29,7 @@ spl_autoload_register(
 		if ( isset($class_name_parts[0]) && 0 === strcmp('Wonderpress_Core', $class_name_parts[0]) ) {
 
 			// Clean up the class name to reflect that of a normal PSR-4 standard
-			$classes_dir = realpath( plugin_dir_path( __FILE__ ) ) . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR;
+			$classes_dir = realpath( plugin_dir_path( __FILE__ ) ) . DIRECTORY_SEPARATOR . WONDERPRESS_CORE_DIRECTORY_NAME . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR;
 			$class_file  = str_replace( 'Wonderpress_Core\\', '', $class_name ) . '.php';
 			$class_file  = str_replace( '\\', DIRECTORY_SEPARATOR, $class_file );
 			$class_file = strtolower( $class_file );
@@ -54,7 +56,7 @@ if ( ! function_exists( 'wonder_require_all' ) ) {
 	 * @param String $path The path to the directory (with trailing slash).
 	 */
 	function wonder_require_all( $path ) {
-		foreach ( glob( $path . '*.php' ) as $filename ) {
+		foreach ( glob( rtrim( $path, DIRECTORY_SEPARATOR ) . DIRECTORY_SEPARATOR . '*.php' ) as $filename ) {
 			require_once $filename;
 		}
 	}
@@ -63,4 +65,4 @@ if ( ! function_exists( 'wonder_require_all' ) ) {
 /**
  * Import PHP files from ./inc/ directory
  */
-wonder_require_all( dirname( __FILE__ ) . '/inc/' );
+wonder_require_all( dirname( __FILE__ ) . DIRECTORY_SEPARATOR . WONDERPRESS_CORE_DIRECTORY_NAME . DIRECTORY_SEPARATOR . 'inc' );
