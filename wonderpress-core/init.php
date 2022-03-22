@@ -1,5 +1,11 @@
 <?php
 /**
+ * Initialize the Wonderpress Core.
+ *
+ * @package Wonderpress Core
+ */
+
+/**
  * This auto-loads a class or trait just when you need it.
  *
  * This function expects the class to be stored in the `src` directory
