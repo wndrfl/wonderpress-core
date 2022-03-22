@@ -1,15 +1,17 @@
 <?php
 /**
-* Plugin Name: Wonderpress Core
-* Description: A toolkit layer for awesome WordPress development and management.
-* Version: 1.0.0
-* Author: Wonderful
-* Author URI: https://wonderful.io
-**/
+ * Plugin Name: Wonderpress Core
+ * Description: A toolkit layer for awesome WordPress development and management.
+ * Version: 1.0.0
+ * Author: Wonderful
+ * Author URI: https://wonderful.io
+ *
+ * @package Wonderpress Core
+ **/
 
-defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
+defined( 'ABSPATH' ) || die( 'No script kiddies please!' );
 
-define( 'WONDERPRESS_CORE_VERSION', '1.0.0');
+define( 'WONDERPRESS_CORE_VERSION', '1.0.0' );
 
 define( 'WONDERPRESS_CORE_DIRECTORY_NAME', 'wonderpress-core' );
 

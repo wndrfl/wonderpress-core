@@ -32,7 +32,6 @@ if ( ! function_exists( 'wonder_dd' ) ) {
 	 * Dump and die
 	 *
 	 * @param Mixed $payload A payload to dump and die.
-	 * @return Void
 	 */
 	function wonder_dd( $payload = null ) {
 		echo '<pre>';

@@ -136,18 +136,11 @@ class Link extends Abstract_Partial {
 	 * @return void
 	 */
 	public function render_into_template() {
-		$html = '';
-		ob_start();
 
 		foreach ( $this->_attrs as $k => $v ) {
 			$$k = $v;
 		}
 
 		include( dirname( __FILE__ ) . '/../../partials/link.php' );
-
-		$html = ob_get_contents();
-		ob_end_clean();
-
-		echo $html;
 	}
 }

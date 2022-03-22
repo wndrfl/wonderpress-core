@@ -1,7 +1,10 @@
 {
+	// These files / dirs will not be cloned into the Wonderpress Development Environment
 	"ignore": [
 		".git",
 		".gitignore",
-		".wonderpressrc"
+		".wonderpressrc",
+		"composer.json",
+		"phpcs.xml"
 	]
 }

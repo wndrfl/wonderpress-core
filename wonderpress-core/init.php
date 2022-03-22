@@ -17,8 +17,8 @@ spl_autoload_register(
 	function ( $class_name ) {
 
 		// Check the namespace
-		$class_name_parts = explode('\\', $class_name);
-		if ( isset($class_name_parts[0]) && 0 === strcmp('Wonderpress_Core', $class_name_parts[0]) ) {
+		$class_name_parts = explode( '\\', $class_name );
+		if ( isset( $class_name_parts[0] ) && 0 === strcmp( 'Wonderpress_Core', $class_name_parts[0] ) ) {
 
 			// Clean up the class name to reflect that of a normal PSR-4 standard
 			$classes_dir = realpath( plugin_dir_path( __FILE__ ) ) . DIRECTORY_SEPARATOR . WONDERPRESS_CORE_DIRECTORY_NAME . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR;
