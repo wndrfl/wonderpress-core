@@ -5,8 +5,10 @@
 ## Features
 
 ### Bootstrapping
+Any logic in `inc/bootstrap.php` will be automatically run on page load.
 
 ### Helpers
+Wonderpress Core provides various useful helper functions in `inc/helpers.php`.
 
 ### Partials
 
