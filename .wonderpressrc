@@ -2,6 +2,7 @@
 	// These files / dirs will not be cloned into the Wonderpress Development Environment
 	"ignore": [
 		".git",
+		".github",
 		".gitignore",
 		".wonderpressrc",
 		"composer.json",
