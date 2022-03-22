@@ -6,6 +6,7 @@
 		".gitignore",
 		".wonderpressrc",
 		"composer.json",
+		"composer.lock",
 		"phpcs.xml"
 	]
 }
