@@ -143,7 +143,7 @@ class Link extends Abstract_Partial {
 			$$k = $v;
 		}
 
-		include( __DIR__ . '/../../partials/link.php' );
+		include( dirname( __FILE__ ) . '/../../partials/link.php' );
 
 		$html = ob_get_contents();
 		ob_end_clean();

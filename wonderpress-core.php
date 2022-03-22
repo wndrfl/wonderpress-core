@@ -63,4 +63,4 @@ if ( ! function_exists( 'wonder_require_all' ) ) {
 /**
  * Import PHP files from ./inc/ directory
  */
-require_all( dirname( __FILE__ ) . '/inc/' );
+wonder_require_all( dirname( __FILE__ ) . '/inc/' );

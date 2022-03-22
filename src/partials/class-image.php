@@ -135,7 +135,7 @@ class Image extends Abstract_Partial {
 			$$k = $v;
 		}
 
-		include( __DIR__ . '/../../partials/image.php' );
+		include( dirname( __FILE__ ) . '/../../partials/image.php' );
 
 		$html = ob_get_contents();
 		ob_end_clean();
