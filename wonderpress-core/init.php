@@ -51,4 +51,4 @@ if ( ! function_exists( 'wonder_require_all' ) ) {
 /**
  * Import PHP files from ./inc/ directory
  */
-wonder_require_all( dirname( __FILE__ ) . DIRECTORY_SEPARATOR . WONDERPRESS_CORE_DIRECTORY_NAME . DIRECTORY_SEPARATOR . 'inc' );
+wonder_require_all( dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'inc' );
