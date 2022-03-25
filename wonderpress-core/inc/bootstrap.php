@@ -31,6 +31,44 @@ if ( ! function_exists( 'wonder_add_slug_to_body_class' ) ) {
 	add_filter( 'body_class', 'wonder_add_slug_to_body_class' );
 }
 
+if ( ! function_exists( 'wonder_prefer_inline_css' ) ) {
+	/**
+	 * Indicate that, if possible, CSS should be imported inline
+	 * rather than by link tag
+	 *
+	 * @param Boolean $preferred Whether or not to prefer.
+	 * @return Boolean
+	 */
+	function wonder_prefer_inline_css( $preferred = null ) {
+		static $_preferred = false;
+
+		if ( ! is_null( $preferred ) ) {
+			$_preferred = $preferred;
+		}
+
+		return $_preferred;
+	}
+}
+
+if ( ! function_exists( 'wonder_prefer_inline_js' ) ) {
+	/**
+	 * Indicate that, if possible, JS should be imported inline
+	 * rather than by link tag
+	 *
+	 * @param Boolean $preferred Whether or not to prefer.
+	 * @return Boolean
+	 */
+	function wonder_prefer_inline_js( $preferred = null ) {
+		static $_preferred = false;
+
+		if ( ! is_null( $preferred ) ) {
+			$_preferred = $preferred;
+		}
+
+		return $_preferred;
+	}
+}
+
 if ( ! function_exists( 'wonder_remove_admin_bar' ) ) {
 	/**
 	 * Will remove the admin bar.
