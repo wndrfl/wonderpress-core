@@ -92,6 +92,23 @@ if ( ! function_exists( 'wonder_get_menu_array' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wonder_handle_exception' ) ) {
+	/**
+	 * Handle an exception by displaying or suppressing.
+	 *
+	 * @param Object $exception An Exception object.
+	 * @return Void
+	 */
+	function wonder_handle_exception( \Exception $e ) {
+		if( defined('WP_DEBUG') && true === WP_DEBUG ) {
+			wonder_dd( $e );
+		}
+
+		unset( $e );
+		return;
+	}
+}
+
 if ( ! function_exists( 'wonder_image' ) ) {
 	/**
 	 * Easily render an image tag.
