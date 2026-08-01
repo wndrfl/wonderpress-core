@@ -48,7 +48,7 @@ interface Partial_Interface {
 	 * @param Boolean $echo Whether or not to echo the HTML or simply return it.
 	 * @return String|Boolean
 	 */
-	public function render( $echo = true);
+	public function render( $echo = true );
 
 	/**
 	 * An internal process to merge the property values and HTML bits into a
