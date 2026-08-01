@@ -58,7 +58,7 @@ abstract class Abstract_Partial implements Partial_Interface {
 	 */
 	public function __get( $property ) {
 		if ( ! property_exists( get_called_class(), '_properties' ) || ! isset( static::$_properties[ $property ] ) ) {
-			throw new \Exception( '\'' . $property . '\' is not an allowed property.' );
+			throw new \Exception( esc_html( '\'' . $property . '\' is not an allowed property.' ) );
 		}
 
 		$val = isset( $this->_attrs[ $property ] ) ? $this->_attrs[ $property ] : null;
@@ -80,7 +80,7 @@ abstract class Abstract_Partial implements Partial_Interface {
 	 */
 	public function __set( $property, $value ) {
 		if ( ! property_exists( get_called_class(), '_properties' ) || ! isset( static::$_properties[ $property ] ) ) {
-			throw new \Exception( '\'' . $property . '\' is not an allowed property.' );
+			throw new \Exception( esc_html( '\'' . $property . '\' is not an allowed property.' ) );
 		}
 
 		$attempted_type = gettype( $value );
@@ -94,7 +94,7 @@ abstract class Abstract_Partial implements Partial_Interface {
 				}
 
 				if ( ! in_array( $attempted_type, $allowed_formats ) ) {
-					throw new \Exception( 'Attempting to set a property with an invalid format: ' . $attempted_type );
+					throw new \Exception( esc_html( 'Attempting to set a property with an invalid format: ' . $attempted_type ) );
 				}
 			}
 		}
@@ -309,7 +309,7 @@ abstract class Abstract_Partial implements Partial_Interface {
 
 		$invalid_properties = $this->get_invalid_properties();
 		if ( $invalid_properties ) {
-			throw new \Exception( 'Partial is invalid, missing or invalid value for property: ' . array_key_first( $invalid_properties ) );
+			throw new \Exception( esc_html( 'Partial is invalid, missing or invalid value for property: ' . array_key_first( $invalid_properties ) ) );
 		}
 
 		$html = '';

@@ -154,6 +154,6 @@ class Link extends Abstract_Partial {
 			$$k = $v;
 		}
 
-		include( dirname( __FILE__ ) . '/../../partials/link.php' );
+		include __DIR__ . '/../../partials/link.php';
 	}
 }

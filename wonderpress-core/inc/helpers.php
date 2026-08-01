@@ -96,11 +96,11 @@ if ( ! function_exists( 'wonder_handle_exception' ) ) {
 	/**
 	 * Handle an exception by displaying or suppressing.
 	 *
-	 * @param Object $exception An Exception object.
+	 * @param \Exception $e An Exception object.
 	 * @return Void
 	 */
 	function wonder_handle_exception( \Exception $e ) {
-		if( defined('WP_DEBUG') && true === WP_DEBUG ) {
+		if ( defined( 'WP_DEBUG' ) && true === WP_DEBUG ) {
 			wonder_dd( $e );
 		}
 
@@ -142,7 +142,7 @@ if ( ! function_exists( 'wonder_include_template_file' ) ) {
 		foreach ( $_params as $k => $v ) {
 			$$k = $v;
 		}
-		include( locate_template( $_filename ) );
+		include locate_template( $_filename );
 
 		if ( $_return ) {
 			$html = ob_get_contents();
