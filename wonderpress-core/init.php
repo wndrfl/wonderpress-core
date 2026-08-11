@@ -5,14 +5,24 @@
  * @package Wonderpress Core
  */
 
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * The absolute path to this directory, used by the partial classes to locate
+ * their fallback view templates when a theme does not override them.
+ */
+define( 'WONDERPRESS_CORE_PATH', plugin_dir_path( __FILE__ ) );
+
 /**
  * This auto-loads a class or trait just when you need it.
  *
- * This function expects the class to be stored in the `src` directory
- * and named according to the official WordPress Coding Standards for PHP classes.
+ * Classes are expected to live in the `src` directory, named according to the
+ * WordPress Coding Standards for PHP classes (`class-the-class-name.php`),
+ * which differs from PSR-4: the namespace path is lowercased and the file
+ * name gains a `class-` prefix with hyphens instead of underscores.
  *
  * See: https://developer.wordpress.org/coding-standards/wordpress-coding-standards/php/#only-one-object-structure-class-interface-trait-should-be-declared-per-file
- **/
+ */
 spl_autoload_register(
 	function ( $class_name ) {
 
@@ -24,19 +34,20 @@ spl_autoload_register(
 			$classes_dir = realpath( plugin_dir_path( __FILE__ ) ) . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR;
 			$class_file  = str_replace( 'Wonderpress_Core\\', '', $class_name ) . '.php';
 			$class_file  = str_replace( '\\', DIRECTORY_SEPARATOR, $class_file );
-			$class_file = strtolower( $class_file );
+			$class_file  = strtolower( $class_file );
 
-			// FOOLED YOU. The WordPress Coding Standard doesn't support true PSR-4
-			// naming standards for classes. So we have to adjust the naming a little
-			// further in order to find the correct file.
-			// Now turn the file name into the WordPress-friendly naming convention
-			// of "class-the-class-name.php"
+			// Convert the trailing file name into the WordPress-friendly
+			// naming convention of "class-the-class-name.php".
 			$class_file_parts = explode( DIRECTORY_SEPARATOR, $class_file );
-			$file_name = 'class-' . str_replace( '_', '-', array_pop( $class_file_parts ) );
+			$file_name        = 'class-' . str_replace( '_', '-', array_pop( $class_file_parts ) );
 			array_push( $class_file_parts, $file_name );
 			$class_file = implode( DIRECTORY_SEPARATOR, $class_file_parts );
 
-			require_once $classes_dir . $class_file;
+			// An autoloader must fall through quietly when it cannot resolve
+			// a class, so another registered autoloader can take over.
+			if ( file_exists( $classes_dir . $class_file ) ) {
+				require_once $classes_dir . $class_file;
+			}
 		}
 	}
 );

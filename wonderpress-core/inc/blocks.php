@@ -12,6 +12,8 @@
  * @package Wonderpress Core
  */
 
+defined( 'ABSPATH' ) || exit;
+
 if ( ! function_exists( 'wonder_register_theme_blocks' ) ) {
 	/**
 	 * Register every block found under the active theme's `blocks/` directory.

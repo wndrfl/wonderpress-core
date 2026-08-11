@@ -5,6 +5,8 @@
  * @package Wonderpress Core
  */
 
+defined( 'ABSPATH' ) || exit;
+
 use Wonderpress_Core\Partials\Image;
 use Wonderpress_Core\Partials\Link;
 
@@ -45,13 +47,21 @@ if ( ! function_exists( 'wonder_get_menu_array' ) ) {
 	/**
 	 * Get a WordPress Menu as an associative array.
 	 *
-	 * @param String $location The name of the menu location.
-	 * @return Array|Boolean
+	 * Accepts a registered theme location, or a menu id, slug or name.
+	 * Nesting is resolved one level deep: children of children are ignored.
+	 *
+	 * @param String $location A theme location, or a menu id, slug or name.
+	 * @return Array
 	 */
 	function wonder_get_menu_array( $location ) {
 
+		// Resolve a registered theme location to its assigned menu first;
+		// wp_get_nav_menu_items() only understands menu ids, slugs and names.
+		$locations = get_nav_menu_locations();
+		$menu_id   = isset( $locations[ $location ] ) ? $locations[ $location ] : $location;
+
 		// https://developer.wordpress.org/reference/functions/wp_get_nav_menu_items/
-		$menu_items = wp_get_nav_menu_items( $location, array() );
+		$menu_items = wp_get_nav_menu_items( $menu_id );
 
 		if ( ! $menu_items ) {
 			return array();
@@ -62,29 +72,16 @@ if ( ! function_exists( 'wonder_get_menu_array' ) ) {
 		// Get the parent items
 		foreach ( $menu_items as $menu_item ) {
 			if ( empty( $menu_item->menu_item_parent ) ) {
-				$menu[ $menu_item->ID ] = (array) $menu_item;
+				$menu[ $menu_item->ID ]             = (array) $menu_item;
 				$menu[ $menu_item->ID ]['children'] = array();
 			}
 		}
 
-		// Get all subs
-		// Right now this only checks 1 level deep
+		// Attach each child to its top-level parent
 		foreach ( $menu_items as $menu_item ) {
-			if ( $menu_item->menu_item_parent ) {
-
-				$parent_menu_item = false;
-
-				if ( isset( $menu[ $menu_item->menu_item_parent ] ) ) {
-					$parent_menu_item = &$menu[ $menu_item->menu_item_parent ];
-				}
-
-				// TODO: Check submenus for matches
-
-				if ( isset( $parent_menu_item ) && $parent_menu_item ) {
-					$parent_menu_item['children'][ $menu_item->ID ] = (array) $menu_item;
-					$parent_menu_item['children'][ $menu_item->ID ]['children'] = array();
-					unset( $parent_menu_item );
-				}
+			if ( $menu_item->menu_item_parent && isset( $menu[ $menu_item->menu_item_parent ] ) ) {
+				$menu[ $menu_item->menu_item_parent ]['children'][ $menu_item->ID ]             = (array) $menu_item;
+				$menu[ $menu_item->menu_item_parent ]['children'][ $menu_item->ID ]['children'] = array();
 			}
 		}
 
@@ -119,7 +116,7 @@ if ( ! function_exists( 'wonder_image' ) ) {
 	 */
 	function wonder_image( $params, $echo = true ) {
 		$image = new Image( $params );
-		$html = $image->render( $echo );
+		$html  = $image->render( $echo );
 		return $html;
 	}
 }
@@ -134,20 +131,25 @@ if ( ! function_exists( 'wonder_include_template_file' ) ) {
 	 * @return void|String
 	 */
 	function wonder_include_template_file( $_filename, $_params = array(), $_return = false ) {
+
+		// locate_template() returns an empty string when nothing matches;
+		// bail instead of attempting to include ''.
+		$_template = locate_template( $_filename );
+		if ( ! $_template ) {
+			return $_return ? '' : null;
+		}
+
 		if ( $_return ) {
-			$html = '';
 			ob_start();
 		}
 
 		foreach ( $_params as $k => $v ) {
 			$$k = $v;
 		}
-		include locate_template( $_filename );
+		include $_template;
 
 		if ( $_return ) {
-			$html = ob_get_contents();
-			ob_end_clean();
-			return $html;
+			return ob_get_clean();
 		}
 	}
 }
@@ -235,8 +237,8 @@ if ( ! function_exists( 'wonder_rte_filter' ) ) {
 
 		foreach ( $replaceable as $tag ) {
 			foreach ( $dom->getElementsByTagName( $tag ) as $node ) {
-				$existing = $node->getAttribute( 'class' );
-				$existing_parts = explode( ' ', $existing );
+				$existing         = $node->getAttribute( 'class' );
+				$existing_parts   = explode( ' ', $existing );
 				$existing_parts[] = 'theme-rte__' . $tag;
 				$node->setAttribute( 'class', implode( ' ', $existing_parts ) );
 			}

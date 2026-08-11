@@ -7,6 +7,8 @@
 
 namespace Wonderpress_Core\Partials;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Partial_Interface
  * Wonderpress_Core\Partials\Partial_Interface
