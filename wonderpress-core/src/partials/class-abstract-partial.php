@@ -9,6 +9,8 @@ namespace Wonderpress_Core\Partials;
 
 use Wonderpress_Core\Partials\Partial_Interface;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Abstract_Partial
  * Wonderpress_Core\Partials\Abstract_Partial
@@ -47,7 +49,7 @@ abstract class Abstract_Partial implements Partial_Interface {
 	 * A magic method for how to handle var_dump() of this object.
 	 */
 	public function __debugInfo() {
-		 return $this->_attrs;
+		return $this->_attrs;
 	}
 
 	/**
@@ -61,9 +63,10 @@ abstract class Abstract_Partial implements Partial_Interface {
 			throw new \Exception( esc_html( '\'' . $property . '\' is not an allowed property.' ) );
 		}
 
-		$val = isset( $this->_attrs[ $property ] ) ? $this->_attrs[ $property ] : null;
-		if ( $val ) {
-			return $val;
+		// Only a true null falls through to the default, so explicitly
+		// set values of '', 0 and false are respected.
+		if ( array_key_exists( $property, $this->_attrs ) && ! is_null( $this->_attrs[ $property ] ) ) {
+			return $this->_attrs[ $property ];
 		}
 
 		$default = isset( static::$_properties[ $property ]['default'] ) ? static::$_properties[ $property ]['default'] : null;
@@ -83,29 +86,15 @@ abstract class Abstract_Partial implements Partial_Interface {
 			throw new \Exception( esc_html( '\'' . $property . '\' is not an allowed property.' ) );
 		}
 
-		$attempted_type = gettype( $value );
-
-		if ( ! $attempted_type ) {
-			$_property = static::$_properties[ $property ];
-			if ( isset( $_property['format'] ) ) {
-				$allowed_formats = ( is_array( $_property['format'] ) ) ? $_property['format'] : explode( '|', $_property['format'] );
-				if ( ! is_array( $allowed_formats ) ) {
-					$allowed_formats = array( $allowed_formats );
-				}
-
-				if ( ! in_array( $attempted_type, $allowed_formats ) ) {
-					throw new \Exception( esc_html( 'Attempting to set a property with an invalid format: ' . $attempted_type ) );
-				}
-			}
-		}
-
+		// Format validation happens in get_invalid_properties(), which
+		// render() consults before output.
 		$this->_attrs[ $property ] = $value;
 	}
 
 	/**
 	 * A magic method to handle outputting this object as a string.
 	 *
-	 * @return Void
+	 * @return String
 	 */
 	public function __toString() {
 		return $this->render( false );
@@ -118,8 +107,12 @@ abstract class Abstract_Partial implements Partial_Interface {
 	 * @return void
 	 */
 	public function __construct( array $params = array() ) {
+		// Only assign properties that were actually supplied, so unsupplied
+		// properties fall through to their declared defaults in __get().
 		foreach ( static::$_properties as $name => $config ) {
-			$this->$name = isset( $params[ $name ] ) ? $params[ $name ] : null;
+			if ( array_key_exists( $name, $params ) ) {
+				$this->$name = $params[ $name ];
+			}
 		}
 
 		$this->attempt_acf_ingestion( $params );
@@ -139,12 +132,12 @@ abstract class Abstract_Partial implements Partial_Interface {
 
 		foreach ( static::$_properties as $property_key => $property_config ) {
 
-			if ( 'acf' == $property_key ) {
+			if ( 'acf' === $property_key ) {
 				continue;
 			}
 
 			foreach ( $params['acf'] as $acf_key => $acf_value ) {
-				if ( $acf_key == $property_key ) {
+				if ( $acf_key === $property_key ) {
 					$this->$property_key = $acf_value;
 					break;
 				}
@@ -159,7 +152,9 @@ abstract class Abstract_Partial implements Partial_Interface {
 	 * @return String
 	 */
 	public static function compress_html( $html ) {
-		$html = preg_replace( '/[\n\t]+/S', '', $html );
+		// Collapse to a single space (never ''), so attributes separated
+		// only by whitespace do not fuse together.
+		$html = preg_replace( '/[\n\t]+/S', ' ', $html );
 		return $html;
 	}
 
@@ -224,7 +219,7 @@ abstract class Abstract_Partial implements Partial_Interface {
 
 			if ( ! is_null( $this->$key ) && isset( $config['format'] ) ) {
 				$format_parts = explode( '|', $config['format'] );
-				$is_valid = false;
+				$is_valid     = false;
 				foreach ( $format_parts as $format ) {
 					switch ( $format ) {
 						case 'array':
@@ -326,41 +321,41 @@ abstract class Abstract_Partial implements Partial_Interface {
 			wp_kses_allowed_html( 'post' ),
 			array(
 				'circle'  => array(
-					'cx' => array(),
-					'cy' => array(),
-					'fill' => array(),
-					'r' => array(),
-					'stroke' => array(),
+					'cx'           => array(),
+					'cy'           => array(),
+					'fill'         => array(),
+					'r'            => array(),
+					'stroke'       => array(),
 					'stroke-width' => array(),
 				),
 				'picture' => array(),
-				'source' => array(
-					'media' => array(),
+				'source'  => array(
+					'media'  => array(),
 					'srcset' => array(),
 				),
-				'svg'   => array(
-					'class' => array(),
-					'aria-hidden' => array(),
+				'svg'     => array(
+					'class'           => array(),
+					'aria-hidden'     => array(),
 					'aria-labelledby' => array(),
-					'role' => array(),
-					'xmlns' => array(),
-					'width' => array(),
-					'height' => array(),
-					'viewbox' => array(), // <= Must be lower case!
+					'role'            => array(),
+					'xmlns'           => array(),
+					'width'           => array(),
+					'height'          => array(),
+					'viewbox'         => array(), // <= Must be lower case!
 				),
-				'line'     => array(
-					'x1' => array(),
-					'y1' => array(),
-					'x2' => array(),
-					'y2' => array(),
+				'line'    => array(
+					'x1'     => array(),
+					'y1'     => array(),
+					'x2'     => array(),
+					'y2'     => array(),
 					'stroke' => array(),
 				),
-				'g'     => array( 'fill' => array() ),
-				'title' => array( 'title' => array() ),
-				'path'  => array(
-					'd' => array(),
-					'fill' => array(),
-					'stroke' => array(),
+				'g'       => array( 'fill' => array() ),
+				'title'   => array( 'title' => array() ),
+				'path'    => array(
+					'd'            => array(),
+					'fill'         => array(),
+					'stroke'       => array(),
 					'stroke-width' => array(),
 				),
 			)
@@ -379,6 +374,9 @@ abstract class Abstract_Partial implements Partial_Interface {
 	 * An internal process to merge the property values and HTML bits into a
 	 * usable HTML snippet.
 	 *
+	 * The theme may override the view by shipping a file at the same relative
+	 * path as $_partial_template; otherwise the plugin's copy is used.
+	 *
 	 * @throws \Exception If there is no configured partial template.
 	 *
 	 * @return void
@@ -387,6 +385,23 @@ abstract class Abstract_Partial implements Partial_Interface {
 		if ( ! property_exists( $this, '_partial_template' ) || ! $this->_partial_template ) {
 			throw new \Exception( 'A partial template has not been provided.' );
 		}
-		wonder_include_template_file( $this->_partial_template, $this->_attrs );
+
+		// Prefer a theme override, then fall back to the plugin's template.
+		$_template_path = locate_template( $this->_partial_template );
+		if ( ! $_template_path && defined( 'WONDERPRESS_CORE_PATH' ) && file_exists( WONDERPRESS_CORE_PATH . $this->_partial_template ) ) {
+			$_template_path = WONDERPRESS_CORE_PATH . $this->_partial_template;
+		}
+
+		if ( ! $_template_path ) {
+			throw new \Exception( esc_html( 'Partial template could not be located: ' . $this->_partial_template ) );
+		}
+
+		// Expose each declared property to the template through its getter,
+		// so declared defaults apply to unsupplied properties.
+		foreach ( static::$_properties as $_property_name => $_property_config ) {
+			${ $_property_name } = $this->{ $_property_name };
+		}
+
+		include $_template_path;
 	}
 }

@@ -31,5 +31,8 @@
     <rule ref="Generic.CodeAnalysis.UnusedFunctionParameter"/>
     <rule ref="Generic.Commenting.Todo"/>
 
-    <config name="minimum_supported_wp_version" value="4.9"/>
+    <!-- Report warnings, but only fail the run on errors. -->
+    <config name="ignore_warnings_on_exit" value="1"/>
+
+    <config name="minimum_supported_wp_version" value="6.0"/>
 </ruleset>

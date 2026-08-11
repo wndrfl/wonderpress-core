@@ -5,6 +5,8 @@
  * @package Wonderpress Core
  */
 
+defined( 'ABSPATH' ) || exit;
+
 if ( ! function_exists( 'wonder_add_slug_to_body_class' ) ) {
 	/**
 	 * Adds the slug of the current page or post as a class to the <body> tag
