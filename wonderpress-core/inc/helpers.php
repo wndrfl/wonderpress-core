@@ -206,9 +206,24 @@ if ( ! function_exists( 'wonder_rte_filter' ) ) {
 	 * Add a class to p tags from the wysiwyg.
 	 *
 	 * @param String $content The content to filter.
+	 * @return String
 	 */
 	function wonder_rte_filter( $content ) {
-		$content = apply_filters( 'the_content', $content );
+
+		// Guard against infinite recursion when this helper is itself
+		// hooked into `the_content`, since it applies that filter below.
+		static $filtering = false;
+
+		if ( ! $filtering ) {
+			$filtering = true;
+			$content   = apply_filters( 'the_content', $content );
+			$filtering = false;
+		}
+
+		// libxml warns on empty input, and there is nothing to tag anyway.
+		if ( '' === trim( (string) $content ) ) {
+			return '<div class="theme-rte"></div>';
+		}
 
 		$replaceable = array(
 			'a',
@@ -232,20 +247,27 @@ if ( ! function_exists( 'wonder_rte_filter' ) ) {
 
 		$dom = new DOMDocument();
 		libxml_use_internal_errors( true );
-		$dom->loadHTML( mb_convert_encoding( $content, 'HTML-ENTITIES', 'UTF-8' ) );
+
+		// The XML prolog declares the encoding to libxml directly
+		// (mb_convert_encoding() to HTML-ENTITIES is deprecated as of
+		// PHP 8.2). Wrapping the content in the .theme-rte div gives the
+		// parser a single root node, so with NOIMPLIED/NODEFDTD it adds
+		// no doctype/<html>/<body> and the div can be saved on its own.
+		$dom->loadHTML(
+			'<?xml encoding="UTF-8"?><div class="theme-rte">' . $content . '</div>',
+			LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
+		);
 		libxml_clear_errors();
 
 		foreach ( $replaceable as $tag ) {
 			foreach ( $dom->getElementsByTagName( $tag ) as $node ) {
 				$existing         = $node->getAttribute( 'class' );
-				$existing_parts   = explode( ' ', $existing );
+				$existing_parts   = array_filter( explode( ' ', $existing ), 'strlen' );
 				$existing_parts[] = 'theme-rte__' . $tag;
 				$node->setAttribute( 'class', implode( ' ', $existing_parts ) );
 			}
 		}
 
-		$content = $dom->saveHTML();
-
-		return '<div class="theme-rte">' . $content . '</div>';
+		return $dom->saveHTML( $dom->documentElement ); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- PHP built-in DOMDocument property.
 	}
 }
