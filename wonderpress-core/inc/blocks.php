@@ -39,30 +39,78 @@ if ( ! function_exists( 'wonder_register_theme_blocks' ) ) {
 	add_action( 'init', 'wonder_register_theme_blocks' );
 }
 
+if ( ! function_exists( 'wonder_theme_block_categories' ) ) {
+	/**
+	 * Collect the category slugs the theme's own blocks ask to live in.
+	 *
+	 * Read from the emitted block.json files rather than assumed, because the
+	 * category follows the project's block namespace — `acme/hero` is filed
+	 * under `acme` — and the namespace belongs to the project, not to
+	 * WonderPress. Reading it back means this keeps working whatever a project
+	 * calls itself, including the older projects that use `wonderpress`.
+	 *
+	 * @return string[] Distinct category slugs, in directory order.
+	 */
+	function wonder_theme_block_categories() {
+		$blocks_dir = get_stylesheet_directory() . DIRECTORY_SEPARATOR . 'blocks';
+
+		if ( ! is_dir( $blocks_dir ) ) {
+			return array();
+		}
+
+		$slugs = array();
+
+		foreach ( glob( $blocks_dir . DIRECTORY_SEPARATOR . '*', GLOB_ONLYDIR ) as $block_path ) {
+			$metadata_file = $block_path . DIRECTORY_SEPARATOR . 'block.json';
+
+			if ( ! file_exists( $metadata_file ) ) {
+				continue;
+			}
+
+			$metadata = json_decode( file_get_contents( $metadata_file ), true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- A local theme file, not a remote request.
+
+			if ( is_array( $metadata ) && ! empty( $metadata['category'] ) && is_string( $metadata['category'] ) ) {
+				$slugs[] = $metadata['category'];
+			}
+		}
+
+		return array_values( array_unique( $slugs ) );
+	}
+}
+
 if ( ! function_exists( 'wonder_register_block_category' ) ) {
 	/**
-	 * Add the `wonderpress` block category so CLI-emitted blocks
-	 * (`"category": "wonderpress"`) resolve in the inserter.
+	 * Register a block category for each one the theme's blocks declare, so
+	 * they resolve in the inserter instead of falling back to "Uncategorized".
+	 *
+	 * The category the project shares with its theme is titled from the theme's
+	 * own name, so the inserter reads "Acme Co" rather than a slug.
 	 *
 	 * @param mixed[] $categories The registered block categories.
 	 * @return mixed[]
 	 */
 	function wonder_register_block_category( $categories ) {
-		foreach ( $categories as $category ) {
-			if ( isset( $category['slug'] ) && 'wonderpress' === $category['slug'] ) {
-				return $categories;
+		$existing = array_filter( wp_list_pluck( $categories, 'slug' ) );
+		$theme    = wp_get_theme();
+
+		foreach ( wonder_theme_block_categories() as $slug ) {
+			if ( in_array( $slug, $existing, true ) ) {
+				continue;
 			}
+
+			$title = ( get_stylesheet() === $slug && $theme->get( 'Name' ) )
+				? $theme->get( 'Name' )
+				: ucwords( str_replace( '-', ' ', $slug ) );
+
+			$categories[] = array(
+				'slug'  => $slug,
+				'title' => $title,
+			);
+
+			$existing[] = $slug;
 		}
 
-		return array_merge(
-			$categories,
-			array(
-				array(
-					'slug'  => 'wonderpress',
-					'title' => __( 'WonderPress', 'wonderpress' ),
-				),
-			)
-		);
+		return $categories;
 	}
 
 	add_filter( 'block_categories_all', 'wonder_register_block_category' );
