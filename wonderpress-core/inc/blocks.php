@@ -217,3 +217,92 @@ if ( ! function_exists( 'wonder_curate_allowed_blocks' ) ) {
 
 	add_filter( 'allowed_block_types_all', 'wonder_curate_allowed_blocks', 10, 2 );
 }
+
+if ( ! function_exists( 'wonder_template_locks' ) ) {
+	/**
+	 * How locked each page template's content area is.
+	 *
+	 * Keyed by template slug as WordPress reports it — `page-landing.php` — with
+	 * `default` standing for a page on no particular template. Values:
+	 *
+	 *   'all'         Bespoke, code-rendered. Nothing moves, nothing is added.
+	 *   'contentOnly' Text is editable, layout is frozen. The usual answer for
+	 *                 client-editable pages, and the one most agencies skip.
+	 *   'insert'      Blocks may be reordered but not added or removed.
+	 *   false         Open composition.
+	 *
+	 * Empty by default: which pages a client may restructure is a decision each
+	 * project makes, and silently freezing an existing site's pages on a plugin
+	 * update would be the wrong way to find that out.
+	 *
+	 * @param WP_Post|null $post The post being edited.
+	 * @return array<string, string|bool>
+	 */
+	function wonder_template_locks( $post = null ) {
+		return (array) apply_filters( 'wonderpress_template_locks', array(), $post );
+	}
+}
+
+if ( ! function_exists( 'wonder_page_lock' ) ) {
+	/**
+	 * Set the editor's lock level from the page template being edited.
+	 *
+	 * Bespoke pages and client-composed pages have to coexist in one theme, and
+	 * which one a page is follows from its template — so the decision is declared
+	 * once per template in code rather than rediscovered on every page. This is
+	 * deliberately NOT a property of the components on the page: a page has one
+	 * lock level, its components would each claim one, and there is no sensible
+	 * rule to resolve that. Whether a block's INNER content can be rearranged is
+	 * the separate, component-level setting.
+	 *
+	 * Runs on `block_editor_settings_all`, which WordPress applies at the end of
+	 * edit-form-blocks.php — after it has set `templateLock` from the post type's
+	 * own `template_lock`. So a template mapping deliberately wins over the
+	 * coarser post-type setting, which stays the fallback for post types that
+	 * must have one fixed shape.
+	 *
+	 * @param array                   $settings Block editor settings.
+	 * @param WP_Block_Editor_Context $context  The editor being configured.
+	 * @return array
+	 */
+	function wonder_page_lock( $settings, $context = null ) {
+		$post = ( $context instanceof WP_Block_Editor_Context && ! empty( $context->post ) ) ? $context->post : null;
+
+		if ( ! $post instanceof WP_Post ) {
+			return $settings;
+		}
+
+		$slug  = get_page_template_slug( $post );
+		$slug  = ( is_string( $slug ) && '' !== $slug ) ? $slug : 'default';
+		$locks = wonder_template_locks( $post );
+
+		// Absent is not the same as false. A template nobody mapped is left
+		// exactly as WordPress configured it; only an explicit entry changes
+		// anything, so this cannot quietly unlock a post type that locked itself.
+		if ( ! array_key_exists( $slug, $locks ) ) {
+			return $settings;
+		}
+
+		$lock = $locks[ $slug ];
+
+		if ( ! in_array( $lock, array( 'all', 'insert', 'contentOnly', false ), true ) ) {
+			_doing_it_wrong(
+				__FUNCTION__,
+				sprintf(
+					/* translators: 1: template slug, 2: the invalid value */
+					esc_html__( 'Template "%1$s" was given an unrecognised lock level (%2$s). Use "all", "insert", "contentOnly" or false.', 'wonderpress' ),
+					esc_html( $slug ),
+					esc_html( var_export( $lock, true ) ) // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_var_export
+				),
+				'1.0.0'
+			);
+			return $settings;
+		}
+
+		$settings['templateLock'] = $lock;
+
+		return $settings;
+	}
+
+	add_filter( 'block_editor_settings_all', 'wonder_page_lock', 10, 2 );
+}
