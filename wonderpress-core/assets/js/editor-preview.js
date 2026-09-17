@@ -37,6 +37,7 @@
 	var TextControl       = wp.components.TextControl;
 	var TextareaControl   = wp.components.TextareaControl;
 	var ToggleControl     = wp.components.ToggleControl;
+	var Placeholder       = wp.components.Placeholder;
 
 	/**
 	 * Turn a slug into something a person reads: `call_to_action` -> "Call to action".
@@ -70,15 +71,40 @@
 	 */
 	var RESERVED = [ 'lock', 'metadata', 'className', 'style', 'align', 'anchor' ];
 
+	/**
+	 * The attribute names that belong to the partial, not to WordPress.
+	 */
+	function declaredAttributes( blockType ) {
+		return Object.keys( ( blockType && blockType.attributes ) || {} ).filter( function ( key ) {
+			return RESERVED.indexOf( key ) === -1 && 0 !== key.indexOf( '__' );
+		} );
+	}
+
+	/**
+	 * Has anyone put anything in this block yet?
+	 *
+	 * A block with every declared value still empty has just been inserted. That
+	 * is not an invalid block, it is a new one, and the difference matters: a
+	 * partial refuses to render without its required properties, so rendering a
+	 * brand-new block server-side produces a complaint about a property nobody
+	 * has had the chance to fill in. "Invalid" is the wrong word for "new".
+	 *
+	 * Once something IS filled in, that same complaint becomes useful — the
+	 * author is mid-edit and genuinely does still owe the block a value — so the
+	 * empty state is the only case special-cased here.
+	 */
+	function isUntouched( props, blockType ) {
+		return declaredAttributes( blockType ).every( function ( key ) {
+			var value = props.attributes[ key ];
+			return value === undefined || value === null || value === '' || value === false;
+		} );
+	}
+
 	function controlsFor( props ) {
 		var blockType  = wp.blocks.getBlockType( props.name );
 		var attributes = ( blockType && blockType.attributes ) || {};
 
-		return Object.keys( attributes ).reduce( function ( fields, key ) {
-
-			if ( RESERVED.indexOf( key ) !== -1 || 0 === key.indexOf( '__' ) ) {
-				return fields;
-			}
+		return declaredAttributes( blockType ).reduce( function ( fields, key ) {
 
 			var type  = attributes[ key ].type;
 			var label = humanize( key );
@@ -129,7 +155,38 @@
 
 		wp.blocks.registerBlockType( name, {
 			edit: function ( props ) {
-				var fields = controlsFor( props );
+				var blockType = wp.blocks.getBlockType( props.name );
+				var fields    = controlsFor( props );
+				var title     = ( blockType && blockType.title ) || props.name;
+
+				// A block nobody has typed into yet shows an invitation rather
+				// than a server render. It reads as unfinished instead of broken,
+				// and it saves a round-trip whose only possible answer is a
+				// complaint about a property the author has not reached yet.
+				var body = isUntouched( props, blockType )
+					? el(
+						Placeholder,
+						{
+							icon: blockType && blockType.icon && blockType.icon.src,
+							label: title,
+							instructions: fields.length
+								? 'Fill this in from the block settings panel on the right.'
+								: 'This block takes no settings — it will render as soon as the page is saved.',
+						}
+					)
+					: el( ServerSideRender, {
+						block: name,
+						attributes: props.attributes,
+						// A partial can legitimately render to nothing. Say so,
+						// rather than leaving a blank area that reads as broken.
+						EmptyResponsePlaceholder: function () {
+							return el(
+								'p',
+								{ style: { opacity: 0.6, fontStyle: 'italic', margin: 0 } },
+								title + ' — nothing to preview yet'
+							);
+						},
+					} );
 
 				return el(
 					wp.element.Fragment,
@@ -141,23 +198,7 @@
 							el( PanelBody, { title: 'Content', initialOpen: true }, fields )
 						)
 						: null,
-					el(
-					'div',
-					useBlockProps(),
-					el( ServerSideRender, {
-						block: name,
-						attributes: props.attributes,
-						// The server render of an empty component is often empty,
-						// which reads as a broken block rather than an unfilled one.
-						EmptyResponsePlaceholder: function () {
-							return el(
-								'p',
-								{ style: { opacity: 0.6, fontStyle: 'italic', margin: 0 } },
-								name + ' — nothing to preview yet'
-							);
-						},
-					} )
-					)
+					el( 'div', useBlockProps(), body )
 				);
 			},
 
