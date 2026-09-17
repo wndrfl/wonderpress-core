@@ -338,7 +338,7 @@ if ( ! function_exists( 'wonder_enqueue_block_editor_preview' ) ) {
 		wp_enqueue_script(
 			'wonderpress-editor-preview',
 			$src,
-			array( 'wp-blocks', 'wp-element', 'wp-block-editor', 'wp-server-side-render' ),
+			array( 'wp-blocks', 'wp-element', 'wp-block-editor', 'wp-components', 'wp-server-side-render' ),
 			filemtime( WONDERPRESS_CORE_PATH . 'assets/js/editor-preview.js' ),
 			true
 		);
