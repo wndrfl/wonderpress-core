@@ -306,3 +306,51 @@ if ( ! function_exists( 'wonder_page_lock' ) ) {
 
 	add_filter( 'block_editor_settings_all', 'wonder_page_lock', 10, 2 );
 }
+
+if ( ! function_exists( 'wonder_enqueue_block_editor_preview' ) ) {
+	/**
+	 * Register the theme's blocks in the editor, and preview them there.
+	 *
+	 * Registering a block on the server does NOT put it in the editor.
+	 * `unstable__bootstrapServerSideBlockDefinitions()` only stores the server's
+	 * metadata, and the one thing that reads it back is `registerBlockType()` on
+	 * the client. Without this, blocks emitted from block.json alone are absent
+	 * from the inserter — not merely un-previewable.
+	 *
+	 * The script is buildless and reads the `wp.*` globals WordPress already
+	 * enqueues, so a project needs no bundler to get an editor experience.
+	 */
+	function wonder_enqueue_block_editor_preview() {
+		$blocks = wonder_theme_blocks();
+
+		if ( empty( $blocks ) ) {
+			return;
+		}
+
+		$src = defined( 'WONDERPRESS_CORE_PATH' )
+			? plugins_url( 'assets/js/editor-preview.js', WONDERPRESS_CORE_PATH . 'init.php' )
+			: '';
+
+		if ( ! $src ) {
+			return;
+		}
+
+		wp_enqueue_script(
+			'wonderpress-editor-preview',
+			$src,
+			array( 'wp-blocks', 'wp-element', 'wp-block-editor', 'wp-server-side-render' ),
+			filemtime( WONDERPRESS_CORE_PATH . 'assets/js/editor-preview.js' ),
+			true
+		);
+
+		// The block list is handed over rather than rediscovered in JS: the
+		// server already knows exactly what it registered.
+		wp_add_inline_script(
+			'wonderpress-editor-preview',
+			'window.wonderpressEditorBlocks = ' . wp_json_encode( array_keys( $blocks ) ) . ';',
+			'before'
+		);
+	}
+
+	add_action( 'enqueue_block_editor_assets', 'wonder_enqueue_block_editor_preview' );
+}
