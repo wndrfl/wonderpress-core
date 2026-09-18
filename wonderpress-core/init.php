@@ -2,9 +2,15 @@
 /**
  * Initialize the Wonderpress Core.
  *
- * This file is the package's single entry point. Composer requires it through
- * the `autoload.files` key, and the legacy `wonderpress-core.php` mu-plugin
- * stub requires it directly, so it must be safe to reach by either route.
+ * This file is the package's single entry point: Composer requires it through
+ * the `autoload.files` key.
+ *
+ * There is no plugin bootstrap file beside it any more. One existed so the
+ * package could be dropped into wp-content/mu-plugins, which is how core was
+ * installed before 2.0.0 — but a site installed that way already has its own
+ * copy of that file from the version it installed, and never receives this
+ * one. It protected nothing and implied an install path that is no longer
+ * supported.
  *
  * @package Wonderpress Core
  */
@@ -27,6 +33,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
+ * The version of this copy of the package.
+ *
+ * A local first, because the guard below has to compare it against whatever
+ * copy may already have loaded before deciding whether to say anything.
+ */
+$wonderpress_core_this_version = '2.0.0';
+
+/**
  * Stand down when another copy of the package has already booted.
  *
  * A site part-way through the move from mu-plugin to theme dependency can have
@@ -34,20 +48,61 @@ if ( ! defined( 'ABSPATH' ) ) {
  * directory. The `wonder_*` functions all guard themselves with
  * function_exists(), but the define() calls and the autoloader registration
  * below do not, so a second load would emit notices and register a redundant
- * autoloader. First loader wins; mu-plugins loads first, so an un-migrated
- * site keeps the behaviour it had.
+ * autoloader.
+ *
+ * First loader wins, and it has to: by the time this runs the other copy has
+ * already declared its functions, and PHP cannot redeclare them. WordPress
+ * loads mu-plugins long before any theme, so on a site that still has one it
+ * is always the mu-plugin copy that wins — even when it is the older of the
+ * two, and even when the theme now depends on something only the newer one
+ * provides. That combination produces a site with no compiled CSS or JS and
+ * none of the baseline theme supports, breaking quietly and in a place nobody
+ * would think to look. So when the copy that won is older than this one, say
+ * so where an administrator will see it.
  */
 if ( defined( 'WONDERPRESS_CORE_PATH' ) ) {
+
+	$wonderpress_core_loaded_version = defined( 'WONDERPRESS_CORE_VERSION' ) ? WONDERPRESS_CORE_VERSION : '0.0.0';
+
+	if ( version_compare( $wonderpress_core_loaded_version, $wonderpress_core_this_version, '<' ) ) {
+
+		define( 'WONDERPRESS_CORE_SUPERSEDED_BY', $wonderpress_core_this_version );
+
+		if ( ! function_exists( 'wonder_core_stale_copy_notice' ) ) {
+			/**
+			 * Warn that an older copy of the package loaded first and won.
+			 *
+			 * @return void
+			 */
+			function wonder_core_stale_copy_notice() {
+				printf(
+					'<div class="notice notice-error"><p>%s</p></div>',
+					esc_html(
+						sprintf(
+							/* translators: 1: version that loaded, 2: version that stood down, 3: path of the copy that loaded */
+							__( 'An older Wonderpress Core (%1$s) loaded first and takes precedence over the copy this theme depends on (%2$s), so compiled assets, theme supports and blocks may be missing. Delete the old copy at %3$s — it is no longer the supported install location.', 'wonderpress' ),
+							defined( 'WONDERPRESS_CORE_VERSION' ) ? WONDERPRESS_CORE_VERSION : 'unknown',
+							WONDERPRESS_CORE_SUPERSEDED_BY,
+							WONDERPRESS_CORE_PATH
+						)
+					)
+				);
+			}
+
+			add_action( 'admin_notices', 'wonder_core_stale_copy_notice' );
+		}
+	}
+
 	return;
 }
 
 /**
  * The version of this package.
  *
- * Lives here rather than in the mu-plugin stub so that it survives the move
- * into a theme's vendor directory, where that stub is not loaded at all.
+ * Lives here rather than in a plugin bootstrap file so that it is defined on
+ * every install path, including the Composer one.
  */
-define( 'WONDERPRESS_CORE_VERSION', '2.0.0' );
+define( 'WONDERPRESS_CORE_VERSION', $wonderpress_core_this_version );
 
 /**
  * The absolute path to this directory, used by the partial classes to locate
