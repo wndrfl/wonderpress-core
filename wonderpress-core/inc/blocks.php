@@ -327,11 +327,19 @@ if ( ! function_exists( 'wonder_enqueue_block_editor_preview' ) ) {
 			return;
 		}
 
-		$src = defined( 'WONDERPRESS_CORE_PATH' )
-			? plugins_url( 'assets/js/editor-preview.js', WONDERPRESS_CORE_PATH . 'init.php' )
-			: '';
+		if ( ! defined( 'WONDERPRESS_CORE_PATH' ) ) {
+			return;
+		}
 
-		if ( ! $src ) {
+		$relative_path = 'assets/js/editor-preview.js';
+		$absolute_path = WONDERPRESS_CORE_PATH . $relative_path;
+
+		// wonder_core_url() rather than plugins_url(): this package may be
+		// installed as an mu-plugin or as a theme's Composer dependency, and
+		// plugins_url() resolves against WP_PLUGIN_DIR either way.
+		$src = wonder_core_url( $relative_path );
+
+		if ( ! $src || ! file_exists( $absolute_path ) ) {
 			return;
 		}
 
@@ -339,7 +347,7 @@ if ( ! function_exists( 'wonder_enqueue_block_editor_preview' ) ) {
 			'wonderpress-editor-preview',
 			$src,
 			array( 'wp-blocks', 'wp-element', 'wp-block-editor', 'wp-components', 'wp-server-side-render' ),
-			filemtime( WONDERPRESS_CORE_PATH . 'assets/js/editor-preview.js' ),
+			filemtime( $absolute_path ),
 			true
 		);
 

@@ -1,12 +1,14 @@
 {
 	// These files / dirs will not be cloned into the Wonderpress Development Environment
+	//
+	// composer.json and composer.lock are deliberately NOT listed: as of 2.0.0
+	// this package is installed as a Composer dependency of the theme, and its
+	// manifest is the thing that makes that possible.
 	"ignore": [
 		".git",
 		".github",
 		".gitignore",
 		".wonderpressrc",
-		"composer.json",
-		"composer.lock",
 		"phpcs.xml"
 	]
 }

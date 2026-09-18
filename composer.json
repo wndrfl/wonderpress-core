@@ -1,7 +1,25 @@
 {
+    "name": "wndrfl/wonderpress-core",
+    "description": "A toolkit layer for awesome WordPress development and management.",
+    "type": "library",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "Wonderful",
+            "homepage": "https://wonderful.io"
+        }
+    ],
+    "require": {
+        "php": ">=8.2"
+    },
     "require-dev": {
         "wp-coding-standards/wpcs": "^3.1",
         "dealerdirect/phpcodesniffer-composer-installer": "^1.0"
+    },
+    "autoload": {
+        "files": [
+            "wonderpress-core/init.php"
+        ]
     },
     "config": {
         "allow-plugins": {
