@@ -13,5 +13,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
+    - name: Install dependencies
+      run: composer update
+
+    # Before linting, not after: a phpcs that cannot run exits 0 and prints
+    # nothing, which is indistinguishable from a clean pass. This job was green
+    # for exactly that reason once already.
+    - name: Verify the lint toolchain actually runs
+      run: composer run check-tooling
+
     - name: Codesniff against the Wonderpress Coding Standards...
-      run: composer update && composer run lint
+      run: composer run lint

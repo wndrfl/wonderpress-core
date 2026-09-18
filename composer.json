@@ -28,6 +28,10 @@
         }
     },
     "scripts": {
+        "check-tooling": [
+            "php -r \"require 'vendor/autoload.php'; echo 'BOOTSTRAP_OK';\" | grep -q BOOTSTRAP_OK",
+            "./vendor/bin/phpcs -i | grep -q WordPress"
+        ],
         "lint": "./vendor/bin/phpcs -p -v .",
         "lint-fix": "./vendor/bin/phpcbf -p -v ."
     }
