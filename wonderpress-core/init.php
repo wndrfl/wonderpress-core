@@ -38,7 +38,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * A local first, because the guard below has to compare it against whatever
  * copy may already have loaded before deciding whether to say anything.
  */
-$wonderpress_core_this_version = '2.1.0';
+$wonderpress_core_this_version = '2.2.0';
 
 /**
  * Stand down when another copy of the package has already booted.

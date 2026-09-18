@@ -27,7 +27,24 @@ if ( ! function_exists( 'wonder_template_fields' ) ) {
 	 * @return array<string, string[]>
 	 */
 	function wonder_template_fields() {
-		return (array) apply_filters( 'wonderpress_template_fields', array() );
+		$from_manifests = function_exists( 'wonder_template_fields_from_manifests' )
+			? wonder_template_fields_from_manifests()
+			: array();
+		$custom         = (array) apply_filters( 'wonderpress_template_fields', array() );
+		$merged         = $from_manifests;
+
+		foreach ( $custom as $template => $slugs ) {
+			$merged[ $template ] = array_values(
+				array_unique(
+					array_merge(
+						isset( $merged[ $template ] ) ? (array) $merged[ $template ] : array(),
+						(array) $slugs
+					)
+				)
+			);
+		}
+
+		return $merged;
 	}
 }
 
@@ -284,6 +301,98 @@ if ( ! function_exists( 'wonder_acf_group_from_manifest' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wonder_acf_template_group_key' ) ) {
+	/**
+	 * Stable ACF group key for a page template slug.
+	 *
+	 * @param string $template_slug WordPress template filename.
+	 * @return string
+	 */
+	function wonder_acf_template_group_key( $template_slug ) {
+		$normalized = preg_replace( '/[^a-z0-9_]+/', '_', strtolower( (string) $template_slug ) );
+		return 'group_wndr_tpl_' . trim( $normalized, '_' );
+	}
+}
+
+if ( ! function_exists( 'wonder_acf_group_from_template_manifest' ) ) {
+	/**
+	 * One ACF field group for a template composition (instance ids as fields).
+	 *
+	 * @param array $template_manifest Parsed template manifest.
+	 * @return array|null
+	 */
+	function wonder_acf_group_from_template_manifest( $template_manifest ) {
+		if ( empty( $template_manifest['composition'] ) || ! is_array( $template_manifest['composition'] ) ) {
+			return null;
+		}
+
+		$template = $template_manifest['template'];
+		$fields   = array();
+
+		foreach ( $template_manifest['composition'] as $row ) {
+			if ( empty( $row['id'] ) || empty( $row['partial'] ) ) {
+				continue;
+			}
+
+			$partial_manifest = wonder_theme_manifest( $row['partial'] );
+			if ( ! $partial_manifest || empty( $partial_manifest['acf_compatible'] ) ) {
+				continue;
+			}
+
+			$instance_id = $row['id'];
+			$key_prefix  = 'field_wndr_' . $instance_id;
+
+			$sub_fields = array();
+			foreach ( (array) ( $partial_manifest['properties'] ?? array() ) as $prop ) {
+				$mapped = wonder_acf_field_from_property( $prop, $key_prefix );
+				if ( $mapped ) {
+					$sub_fields[] = $mapped;
+				}
+			}
+
+			if ( ! $sub_fields ) {
+				continue;
+			}
+
+			$label = ! empty( $row['label'] ) && is_string( $row['label'] )
+				? $row['label']
+				: wonder_acf_humanize( $instance_id );
+
+			$fields[] = array(
+				'key'        => $key_prefix,
+				'label'      => $label,
+				'name'       => $instance_id,
+				'type'       => 'group',
+				'layout'     => 'block',
+				'sub_fields' => $sub_fields,
+			);
+		}
+
+		if ( ! $fields ) {
+			return null;
+		}
+
+		$title = wonder_acf_humanize(
+			preg_replace( '/\.php$/', '', (string) $template )
+		);
+
+		return array(
+			'key'      => wonder_acf_template_group_key( $template ),
+			'title'    => $title,
+			'fields'   => $fields,
+			'location' => array(
+				array(
+					array(
+						'param'    => 'page_template',
+						'operator' => '==',
+						'value'    => $template,
+					),
+				),
+			),
+		);
+	}
+}
+
 if ( ! function_exists( 'wonder_register_acf_groups' ) ) {
 	/**
 	 * Register a field group for every located ACF-compatible manifest.
@@ -298,8 +407,21 @@ if ( ! function_exists( 'wonder_register_acf_groups' ) ) {
 			return;
 		}
 
+		if ( function_exists( 'wonder_load_template_manifests' ) ) {
+			foreach ( wonder_load_template_manifests() as $template_manifest ) {
+				$group = wonder_acf_group_from_template_manifest( $template_manifest );
+				if ( $group ) {
+					acf_add_local_field_group( $group );
+				}
+			}
+		}
+
 		foreach ( wonder_load_theme_manifests() as $slug => $manifest ) {
 			if ( empty( $manifest['acf_compatible'] ) ) {
+				continue;
+			}
+
+			if ( function_exists( 'wonder_partial_in_any_composition' ) && wonder_partial_in_any_composition( $slug ) ) {
 				continue;
 			}
 
@@ -335,15 +457,17 @@ if ( ! function_exists( 'wonder_partial_props' ) ) {
 	 * hydrates matching properties. Empty when ACF is absent or the field
 	 * has no value.
 	 *
-	 * @param string $slug The partial slug (and the wrapping ACF group name).
+	 * @param string      $slug        The partial slug.
+	 * @param string|null $instance_id Template composition instance id (ACF group field name).
 	 * @return array
 	 */
-	function wonder_partial_props( $slug ) {
+	function wonder_partial_props( $slug, $instance_id = null ) {
 		if ( ! function_exists( 'get_field' ) ) {
 			return array();
 		}
 
-		$value = get_field( $slug );
+		$field_name = ( is_string( $instance_id ) && '' !== $instance_id ) ? $instance_id : $slug;
+		$value      = get_field( $field_name );
 		return is_array( $value ) ? array( 'acf' => $value ) : array();
 	}
 }

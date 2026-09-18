@@ -239,7 +239,12 @@ if ( ! function_exists( 'wonder_template_locks' ) ) {
 	 * @return array<string, string|bool>
 	 */
 	function wonder_template_locks( $post = null ) {
-		return (array) apply_filters( 'wonderpress_template_locks', array(), $post );
+		$from_manifests = function_exists( 'wonder_template_locks_from_manifests' )
+			? wonder_template_locks_from_manifests()
+			: array();
+		$custom         = (array) apply_filters( 'wonderpress_template_locks', array(), $post );
+
+		return array_merge( $from_manifests, $custom );
 	}
 }
 
