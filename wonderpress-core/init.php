@@ -9,7 +9,22 @@
  * @package Wonderpress Core
  */
 
-defined( 'ABSPATH' ) || exit;
+/**
+ * Bail when this file is reached outside WordPress.
+ *
+ * `return`, not `exit`. Composer lists this file under `autoload.files`, so it
+ * runs on every `require vendor/autoload.php` — including inside this package's
+ * own repository, where there is no WordPress and no ABSPATH. `exit` there
+ * terminated the host process silently: phpcs, and any other Composer-
+ * autoloaded tool, produced no output and returned 0, which reads exactly like
+ * a clean run.
+ *
+ * `return` stops this file without touching the caller, which is the whole of
+ * what the guard is for. A direct web request still executes nothing.
+ */
+if ( ! defined( 'ABSPATH' ) ) {
+	return;
+}
 
 /**
  * Stand down when another copy of the package has already booted.
