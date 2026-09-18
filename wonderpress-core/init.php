@@ -54,11 +54,27 @@ if ( ! function_exists( 'wonder_core_url' ) ) {
 	 * @return String The URL, or an empty string when the file is not under wp-content.
 	 */
 	function wonder_core_url( $relative_path ) {
-		$path        = wp_normalize_path( WONDERPRESS_CORE_PATH . ltrim( $relative_path, '/' ) );
+		$relative_path = ltrim( wp_normalize_path( $relative_path ), '/' );
+
+		// Traversal is never legitimate for a file shipped inside this package,
+		// and a `..` segment would walk straight past the wp-content check
+		// below, which compares strings rather than resolved paths.
+		//
+		// Resolved paths are not an option here: realpath() follows symlinks,
+		// and a Composer `path` repository — how an unreleased core is tested —
+		// symlinks the package to a checkout that is usually outside wp-content
+		// entirely. Rejecting `..` lexically keeps both cases honest.
+		if ( in_array( '..', explode( '/', $relative_path ), true ) ) {
+			return '';
+		}
+
+		$path        = wp_normalize_path( WONDERPRESS_CORE_PATH ) . $relative_path;
 		$content_dir = trailingslashit( wp_normalize_path( WP_CONTENT_DIR ) );
 
 		// A package installed outside wp-content has no servable URL, and
 		// guessing one would produce a 404 rather than an honest failure.
+		// PHP resolves symlinks in __FILE__, so a symlinked `path` checkout
+		// lands here too: its assets genuinely are not reachable over HTTP.
 		if ( 0 !== strpos( $path, $content_dir ) ) {
 			return '';
 		}
