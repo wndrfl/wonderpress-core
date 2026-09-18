@@ -106,6 +106,22 @@ if ( ! function_exists( 'wonder_load_template_manifests' ) ) {
 			}
 
 			$data = json_decode( $raw, true );
+			if ( JSON_ERROR_NONE !== json_last_error() ) {
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					_doing_it_wrong(
+						__FUNCTION__,
+						sprintf(
+							/* translators: 1: file path, 2: JSON error message */
+							esc_html__( 'Template manifest "%1$s" is not valid JSON (%2$s). Core ignores the file; partial field groups may fall back to wonderpress_template_fields.', 'wonderpress' ),
+							esc_html( $path ),
+							esc_html( json_last_error_msg() )
+						),
+						'2.2.0'
+					);
+				}
+				continue;
+			}
+
 			$parsed = wonder_parse_template_manifest_data( $data, $path );
 			if ( $parsed ) {
 				wonder_theme_template_manifests( $parsed );
@@ -113,6 +129,26 @@ if ( ! function_exists( 'wonder_load_template_manifests' ) ) {
 		}
 
 		return wonder_theme_template_manifests();
+	}
+}
+
+if ( ! function_exists( 'wonder_normalize_page_template_slug' ) ) {
+	/**
+	 * Normalize a template slug for comparisons.
+	 *
+	 * WordPress stores `_wp_page_template` as `default`, empty, or a theme-relative
+	 * path such as `template-landing.php`. We compare on basename.
+	 *
+	 * @param string $slug Raw slug or path.
+	 * @return string Basename or `default`.
+	 */
+	function wonder_normalize_page_template_slug( $slug ) {
+		if ( ! is_string( $slug ) || '' === $slug || 'default' === $slug ) {
+			return 'default';
+		}
+
+		$slug = str_replace( '\\', '/', $slug );
+		return basename( $slug );
 	}
 }
 
@@ -124,8 +160,21 @@ if ( ! function_exists( 'wonder_template_manifest' ) ) {
 	 * @return array|null
 	 */
 	function wonder_template_manifest( $template_slug ) {
-		$all = wonder_load_template_manifests();
-		return isset( $all[ $template_slug ] ) ? $all[ $template_slug ] : null;
+		$needle = wonder_normalize_page_template_slug( $template_slug );
+		if ( 'default' === $needle ) {
+			return null;
+		}
+
+		foreach ( wonder_load_template_manifests() as $manifest ) {
+			if ( empty( $manifest['template'] ) ) {
+				continue;
+			}
+			if ( wonder_normalize_page_template_slug( $manifest['template'] ) === $needle ) {
+				return $manifest;
+			}
+		}
+
+		return null;
 	}
 }
 
@@ -134,7 +183,7 @@ if ( ! function_exists( 'wonder_page_template_slug' ) ) {
 	 * Normalized page template slug for a post.
 	 *
 	 * @param WP_Post|null $post Post.
-	 * @return string Template filename or `default`.
+	 * @return string Template basename or `default`.
 	 */
 	function wonder_page_template_slug( $post = null ) {
 		if ( ! $post instanceof WP_Post ) {
@@ -142,7 +191,11 @@ if ( ! function_exists( 'wonder_page_template_slug' ) ) {
 		}
 
 		$slug = get_page_template_slug( $post );
-		return ( is_string( $slug ) && '' !== $slug ) ? $slug : 'default';
+		if ( ( ! is_string( $slug ) || '' === $slug ) && $post->ID ) {
+			$slug = get_post_meta( $post->ID, '_wp_page_template', true );
+		}
+
+		return wonder_normalize_page_template_slug( is_string( $slug ) ? $slug : '' );
 	}
 }
 
@@ -184,7 +237,10 @@ if ( ! function_exists( 'wonder_template_locks_from_manifests' ) ) {
 				continue;
 			}
 
-			$locks[ $manifest['template'] ] = $manifest['editor']['lock'];
+			$key = wonder_normalize_page_template_slug( $manifest['template'] );
+			if ( 'default' !== $key ) {
+				$locks[ $key ] = $manifest['editor']['lock'];
+			}
 		}
 
 		return $locks;

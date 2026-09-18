@@ -277,8 +277,9 @@ if ( ! function_exists( 'wonder_page_lock' ) ) {
 			return $settings;
 		}
 
-		$slug  = get_page_template_slug( $post );
-		$slug  = ( is_string( $slug ) && '' !== $slug ) ? $slug : 'default';
+		$slug  = function_exists( 'wonder_page_template_slug' )
+			? wonder_page_template_slug( $post )
+			: 'default';
 		$locks = wonder_template_locks( $post );
 
 		// Absent is not the same as false. A template nobody mapped is left
