@@ -32,8 +32,8 @@
       "label": "Internal Target",
       "description": "Select the internal item to dynamically link.",
       "when": [[{ "field": "type", "operator": "==", "value": "internal" }]],
+      "post_type": ["page", "post"],
       "acf": {
-        "post_type": ["page", "post"],
         "return_format": "object",
         "ui": 1
       }
@@ -63,8 +63,8 @@
       "label": "File",
       "description": "An image or file to link.",
       "when": [[{ "field": "type", "operator": "==", "value": "file" }]],
+      "post_type": ["attachment"],
       "acf": {
-        "post_type": ["attachment"],
         "return_format": "object",
         "ui": 1
       }

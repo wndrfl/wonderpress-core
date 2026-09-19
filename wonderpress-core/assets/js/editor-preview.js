@@ -93,7 +93,7 @@
 	}
 
 	function postTypesFromPropDef( propDef ) {
-		var postType = propDef && propDef.acf && propDef.acf.post_type;
+		var postType = propDef && propDef.post_type;
 		if ( ! postType ) {
 			return [ 'post' ];
 		}
@@ -359,8 +359,8 @@
 	}
 
 	function isTextareaField( propDef, key ) {
-		if ( propDef && propDef.acf ) {
-			if ( propDef.acf.format === 'textarea' || propDef.acf.rows ) {
+		if ( propDef ) {
+			if ( propDef.format === 'textarea' || propDef.rows ) {
 				return true;
 			}
 		}

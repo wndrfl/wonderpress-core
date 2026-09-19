@@ -19,6 +19,7 @@ if ( ! function_exists( '__' ) ) {
 	}
 }
 
+require dirname( __DIR__ ) . '/inc/manifest-property.php';
 require dirname( __DIR__ ) . '/inc/acf.php';
 
 $prefix = 'field_wndr_link';
@@ -47,9 +48,9 @@ $properties = array(
 				),
 			),
 		),
-		'acf'  => array(
-			'post_type'      => array( 'page' ),
-			'return_format'  => 'object',
+		'post_type'     => array( 'page' ),
+		'acf'           => array(
+			'return_format' => 'object',
 		),
 	),
 	array(

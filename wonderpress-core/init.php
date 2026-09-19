@@ -213,8 +213,10 @@ if ( ! function_exists( 'wonder_require_all' ) ) {
  */
 $wonderpress_core_inc = __DIR__ . DIRECTORY_SEPARATOR . 'inc';
 require_once $wonderpress_core_inc . DIRECTORY_SEPARATOR . 'template-manifests.php';
+require_once $wonderpress_core_inc . DIRECTORY_SEPARATOR . 'manifest-property.php';
 foreach ( glob( $wonderpress_core_inc . DIRECTORY_SEPARATOR . '*.php' ) as $wonderpress_core_inc_file ) {
-	if ( 'template-manifests.php' === basename( $wonderpress_core_inc_file ) ) {
+	$wonderpress_core_inc_basename = basename( $wonderpress_core_inc_file );
+	if ( 'template-manifests.php' === $wonderpress_core_inc_basename || 'manifest-property.php' === $wonderpress_core_inc_basename ) {
 		continue;
 	}
 	require_once $wonderpress_core_inc_file;

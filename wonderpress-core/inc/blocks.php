@@ -366,16 +366,16 @@ if ( ! function_exists( 'wonder_block_editor_schemas' ) ) {
 					$entry['when'] = $prop['when'];
 				}
 
-				if ( ! empty( $prop['acf'] ) && is_array( $prop['acf'] ) ) {
-					$acf_hint = array();
-					foreach ( array( 'rows', 'format', 'post_type', 'return_format' ) as $acf_key ) {
-						if ( isset( $prop['acf'][ $acf_key ] ) ) {
-							$acf_hint[ $acf_key ] = $prop['acf'][ $acf_key ];
-						}
-					}
-					if ( $acf_hint ) {
-						$entry['acf'] = $acf_hint;
-					}
+				if ( ! empty( $prop['post_type'] ) ) {
+					$entry['post_type'] = $prop['post_type'];
+				}
+
+				if ( ! empty( $prop['format'] ) && is_string( $prop['format'] ) ) {
+					$entry['format'] = $prop['format'];
+				}
+
+				if ( ! empty( $prop['rows'] ) ) {
+					$entry['rows'] = (int) $prop['rows'];
 				}
 
 				$properties[] = $entry;

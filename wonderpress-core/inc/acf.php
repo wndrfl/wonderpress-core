@@ -138,7 +138,6 @@ if ( ! function_exists( 'wonder_acf_allowed_passthrough_keys' ) ) {
 			'choices',
 			'default_value',
 			'ui',
-			'post_type',
 			'return_format',
 			'preview_size',
 			'library',
@@ -150,7 +149,6 @@ if ( ! function_exists( 'wonder_acf_allowed_passthrough_keys' ) ) {
 			'min',
 			'max',
 			'step',
-			'rows',
 		);
 	}
 }
@@ -295,11 +293,16 @@ if ( ! function_exists( 'wonder_acf_build_field_from_property' ) ) {
 
 		switch ( $type ) {
 			case 'string':
-				$use_textarea = wonder_acf_is_textarea_name( $name );
-				if ( ! empty( $prop['acf']['rows'] ) || ( isset( $prop['acf']['format'] ) && 'textarea' === $prop['acf']['format'] ) ) {
-					$use_textarea = true;
-				}
+				$use_textarea = function_exists( 'wonder_manifest_property_string_is_textarea' )
+					? wonder_manifest_property_string_is_textarea( $prop )
+					: wonder_acf_is_textarea_name( $name );
 				$field['type'] = $use_textarea ? 'textarea' : 'text';
+				$rows          = function_exists( 'wonder_manifest_property_string_rows' )
+					? wonder_manifest_property_string_rows( $prop )
+					: null;
+				if ( $rows ) {
+					$field['rows'] = $rows;
+				}
 				return wonder_acf_apply_acf_passthrough( $field, $prop );
 
 			case 'boolean':
@@ -336,13 +339,11 @@ if ( ! function_exists( 'wonder_acf_build_field_from_property' ) ) {
 				return wonder_acf_apply_acf_passthrough( $field, $prop );
 
 			case 'post_object':
-				$field['type'] = 'post_object';
-				$field          = wonder_acf_apply_acf_passthrough( $field, $prop );
+				$field['type']       = 'post_object';
+				$field['post_type']  = wonder_manifest_property_post_types( $prop );
+				$field               = wonder_acf_apply_acf_passthrough( $field, $prop );
 				if ( empty( $field['return_format'] ) ) {
 					$field['return_format'] = 'object';
-				}
-				if ( empty( $field['post_type'] ) ) {
-					$field['post_type'] = array( 'post' );
 				}
 				return $field;
 
