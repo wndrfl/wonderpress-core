@@ -206,6 +206,16 @@ if ( ! function_exists( 'wonder_require_all' ) ) {
 }
 
 /**
- * Import PHP files from ./inc/ directory
+ * Import PHP files from ./inc/ directory.
+ *
+ * Template manifests load before ACF so composition helpers exist when field
+ * groups are built (glob order would load acf.php first).
  */
-wonder_require_all( __DIR__ . DIRECTORY_SEPARATOR . 'inc' );
+$wonderpress_core_inc = __DIR__ . DIRECTORY_SEPARATOR . 'inc';
+require_once $wonderpress_core_inc . DIRECTORY_SEPARATOR . 'template-manifests.php';
+foreach ( glob( $wonderpress_core_inc . DIRECTORY_SEPARATOR . '*.php' ) as $wonderpress_core_inc_file ) {
+	if ( 'template-manifests.php' === basename( $wonderpress_core_inc_file ) ) {
+		continue;
+	}
+	require_once $wonderpress_core_inc_file;
+}

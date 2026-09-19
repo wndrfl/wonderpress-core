@@ -314,6 +314,57 @@ if ( ! function_exists( 'wonder_acf_template_group_key' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wonder_acf_composition_row_is_tab' ) ) {
+	/**
+	 * Whether a composition row is a tab container (nested instances).
+	 *
+	 * @param array $row Composition row.
+	 * @return bool
+	 */
+	function wonder_acf_composition_row_is_tab( $row ) {
+		return is_array( $row ) && isset( $row['items'] ) && is_array( $row['items'] );
+	}
+}
+
+if ( ! function_exists( 'wonder_acf_composition_tab_row_count' ) ) {
+	/**
+	 * How many tab-container rows exist in a composition.
+	 *
+	 * ACF only renders a tab bar when a field group has two or more tabs; a
+	 * single tab row uses a message heading instead so fields stay visible.
+	 *
+	 * @param array|null $composition Template composition.
+	 * @return int
+	 */
+	function wonder_acf_composition_tab_row_count( $composition ) {
+		if ( ! is_array( $composition ) ) {
+			return 0;
+		}
+
+		$count = 0;
+		foreach ( $composition as $row ) {
+			if ( wonder_acf_composition_row_is_tab( $row ) ) {
+				$count++;
+			}
+		}
+
+		return $count;
+	}
+}
+
+if ( ! function_exists( 'wonder_acf_field_key_suffix' ) ) {
+	/**
+	 * Sanitize an id for ACF field keys (keys must not rely on raw hyphens).
+	 *
+	 * @param string $id Composition or tab id.
+	 * @return string
+	 */
+	function wonder_acf_field_key_suffix( $id ) {
+		$suffix = preg_replace( '/[^a-z0-9_]+/', '_', strtolower( (string) $id ) );
+		return trim( $suffix, '_' );
+	}
+}
+
 if ( ! function_exists( 'wonder_acf_composition_instance_field' ) ) {
 	/**
 	 * ACF group field for one composition instance row.
@@ -361,19 +412,6 @@ if ( ! function_exists( 'wonder_acf_composition_instance_field' ) ) {
 	}
 }
 
-if ( ! function_exists( 'wonder_acf_field_key_suffix' ) ) {
-	/**
-	 * Sanitize an id for ACF field keys (keys must not rely on raw hyphens).
-	 *
-	 * @param string $id Composition or tab id.
-	 * @return string
-	 */
-	function wonder_acf_field_key_suffix( $id ) {
-		$suffix = preg_replace( '/[^a-z0-9_]+/', '_', strtolower( (string) $id ) );
-		return trim( $suffix, '_' );
-	}
-}
-
 if ( ! function_exists( 'wonder_acf_tab_endpoint_stopper_field' ) ) {
 	/**
 	 * Close an ACF tab group so following fields sit outside tabs.
@@ -413,13 +451,15 @@ if ( ! function_exists( 'wonder_acf_fields_from_template_composition' ) ) {
 		$tab_group_open   = false;
 		$has_fields_above = false;
 		$stopper_index    = 0;
+		$use_acf_tabs     = wonder_acf_composition_tab_row_count( $composition ) >= 2;
+		$tab_index        = 0;
 
 		foreach ( $composition as $row ) {
 			if ( ! is_array( $row ) || empty( $row['id'] ) ) {
 				continue;
 			}
 
-			if ( function_exists( 'wonder_composition_row_is_tab' ) && wonder_composition_row_is_tab( $row ) ) {
+			if ( wonder_acf_composition_row_is_tab( $row ) ) {
 				$tab_id = $row['id'];
 				$label  = ! empty( $row['label'] ) && is_string( $row['label'] )
 					? $row['label']
@@ -438,15 +478,34 @@ if ( ! function_exists( 'wonder_acf_fields_from_template_composition' ) ) {
 				}
 
 				$key_suffix = wonder_acf_field_key_suffix( $tab_id );
-				$fields[]   = array(
+
+				if ( ! $use_acf_tabs ) {
+					$fields[] = array(
+						'key'     => 'field_wndr_section_' . $key_suffix,
+						'label'   => $label,
+						'name'    => '',
+						'type'    => 'message',
+						'message' => $label,
+					);
+
+					foreach ( $child_groups as $group ) {
+						$fields[] = $group;
+					}
+
+					$has_fields_above = true;
+					continue;
+				}
+
+				$fields[] = array(
 					'key'       => 'field_wndr_tab_' . $key_suffix,
 					'label'     => $label,
 					'name'      => '',
 					'type'      => 'tab',
 					'placement' => 'top',
 					'endpoint'  => $has_fields_above ? 1 : 0,
-					'selected'  => 0,
+					'selected'  => 0 === $tab_index ? 1 : 0,
 				);
+				$tab_index++;
 
 				foreach ( $child_groups as $group ) {
 					$fields[] = $group;
@@ -457,7 +516,7 @@ if ( ! function_exists( 'wonder_acf_fields_from_template_composition' ) ) {
 				continue;
 			}
 
-			if ( $tab_group_open ) {
+			if ( $tab_group_open && $use_acf_tabs ) {
 				$fields[]       = wonder_acf_tab_endpoint_stopper_field( (string) $stopper_index );
 				$stopper_index++;
 				$tab_group_open = false;
