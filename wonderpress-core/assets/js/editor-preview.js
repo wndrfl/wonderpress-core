@@ -14,6 +14,7 @@
  *
  * Manifest property semantics (select, email, when, textarea) come from
  * `window.wonderpressBlockSchemas`, built from partial manifests on the server.
+ * Composite types (image, link, …) render inside type-driven inspector fieldsets.
  *
  * `edit` renders through ServerSideRender, which asks WordPress to render the
  * block over REST and shows the result. The PHP partial therefore stays the one
@@ -60,6 +61,31 @@
 
 	function schemaForBlock( blockName ) {
 		return blockSchemas[ blockName ] || null;
+	}
+
+	var VisualLabel = BaseControl.VisualLabel;
+
+	/**
+	 * Fieldset wrapper for composite manifest types (link, image, …).
+	 * Keeps sub-controls visually nested under one legend, not as flat siblings.
+	 */
+	function inspectorFieldGroup( config ) {
+		var legend = VisualLabel
+			? el( VisualLabel, { as: 'legend', className: 'wonderpress-inspector-field-group__legend' }, config.label )
+			: el( 'legend', { className: 'components-base-control__label wonderpress-inspector-field-group__legend' }, config.label );
+
+		return el(
+			'fieldset',
+			{
+				key: config.key,
+				className: 'wonderpress-inspector-field-group components-base-control ' + ( config.className || '' ),
+			},
+			legend,
+			config.help
+				? el( 'p', { className: 'components-base-control__help wonderpress-inspector-field-group__help' }, config.help )
+				: null,
+			el( 'div', { className: 'wonderpress-inspector-field-group__inner' }, config.children )
+		);
 	}
 
 	function propertyDef( blockName, attrName ) {
@@ -357,16 +383,12 @@
 				var previewUrl   = imagePreviewUrl( value );
 
 				fields.push(
-					el(
-						BaseControl,
-						{
-							key: key,
-							className: 'wonderpress-editor-image-control',
-							label: label,
-							help: help,
-							__nextHasNoMarginBottom: true,
-						},
-						el(
+					inspectorFieldGroup( {
+						key: key,
+						className: 'wonderpress-editor-image-control',
+						label: label,
+						help: help,
+						children: el(
 							MediaUploadCheck,
 							null,
 							el( MediaUpload, {
@@ -383,15 +405,12 @@
 											? el( 'img', {
 												src: previewUrl,
 												alt: ( value && value.alt ) ? value.alt : '',
-												style: { display: 'block', maxWidth: '100%', height: 'auto', marginBottom: '8px' },
+												className: 'wonderpress-editor-image-control__preview',
 											} )
 											: null,
 										el(
 											'div',
-											{
-												className: 'wonderpress-editor-image-control__actions',
-												style: { display: 'flex', gap: '8px', flexWrap: 'wrap' },
-											},
+											{ className: 'wonderpress-editor-image-control__actions' },
 											el(
 												Button,
 												{
@@ -417,8 +436,8 @@
 									);
 								},
 							} )
-						)
-					)
+						),
+					} )
 				);
 				return fields;
 			}
@@ -435,49 +454,54 @@
 				}
 
 				fields.push(
-					el(
-						BaseControl,
-						{
-							key: key,
-							className: 'wonderpress-editor-link-control',
-							label: label,
-							help: help,
-							__nextHasNoMarginBottom: true,
-						},
-						el( TextControl, {
-							label: 'Link text',
-							value: linkVal.content,
-							onChange: function ( next ) {
-								patchLink( { content: next } );
-							},
-							__nextHasNoMarginBottom: true,
-						} ),
-						el( TextControl, {
-							label: 'URL',
-							type: 'url',
-							value: linkVal.url,
-							onChange: function ( next ) {
-								patchLink( { url: next } );
-							},
-							__nextHasNoMarginBottom: true,
-						} ),
-						el( TextControl, {
-							label: 'Title attribute',
-							value: linkVal.title,
-							onChange: function ( next ) {
-								patchLink( { title: next } );
-							},
-							__nextHasNoMarginBottom: true,
-						} ),
-						el( ToggleControl, {
-							label: 'Open in new tab',
-							checked: linkVal.open_in_new_tab,
-							onChange: function ( next ) {
-								patchLink( { open_in_new_tab: next } );
-							},
-							__nextHasNoMarginBottom: true,
-						} )
-					)
+					inspectorFieldGroup( {
+						key: key,
+						className: 'wonderpress-editor-link-control',
+						label: label,
+						help: help,
+						children: el(
+							Fragment,
+							null,
+							el( TextControl, {
+								label: 'Text',
+								value: linkVal.content,
+								onChange: function ( next ) {
+									patchLink( { content: next } );
+								},
+								__nextHasNoMarginBottom: true,
+							} ),
+							el( TextControl, {
+								label: 'URL',
+								type: 'url',
+								value: linkVal.url,
+								onChange: function ( next ) {
+									patchLink( { url: next } );
+								},
+								__nextHasNoMarginBottom: true,
+							} ),
+							el(
+								'div',
+								{ className: 'wonderpress-editor-link-control__advanced' },
+								el( TextControl, {
+									label: 'Title attribute',
+									help: 'Optional. Shown on hover and for assistive tech.',
+									value: linkVal.title,
+									onChange: function ( next ) {
+										patchLink( { title: next } );
+									},
+									__nextHasNoMarginBottom: true,
+								} ),
+								el( ToggleControl, {
+									label: 'Open in new tab',
+									checked: linkVal.open_in_new_tab,
+									onChange: function ( next ) {
+										patchLink( { open_in_new_tab: next } );
+									},
+									__nextHasNoMarginBottom: true,
+								} )
+							)
+						),
+					} )
 				);
 				return fields;
 			}

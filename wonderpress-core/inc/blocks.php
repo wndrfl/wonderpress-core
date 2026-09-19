@@ -419,6 +419,9 @@ if ( ! function_exists( 'wonder_enqueue_block_editor_preview' ) ) {
 		$relative_path = 'assets/js/editor-preview.js';
 		$absolute_path = WONDERPRESS_CORE_PATH . $relative_path;
 
+		$style_relative = 'assets/css/editor-preview.css';
+		$style_absolute = WONDERPRESS_CORE_PATH . $style_relative;
+
 		// wonder_core_url() rather than plugins_url(): this package may be
 		// installed as an mu-plugin or as a theme's Composer dependency, and
 		// plugins_url() resolves against WP_PLUGIN_DIR either way.
@@ -426,6 +429,16 @@ if ( ! function_exists( 'wonder_enqueue_block_editor_preview' ) ) {
 
 		if ( ! $src || ! file_exists( $absolute_path ) ) {
 			return;
+		}
+
+		$style_src = wonder_core_url( $style_relative );
+		if ( $style_src && file_exists( $style_absolute ) ) {
+			wp_enqueue_style(
+				'wonderpress-editor-preview',
+				$style_src,
+				array( 'wp-components' ),
+				filemtime( $style_absolute )
+			);
 		}
 
 		wp_enqueue_script(

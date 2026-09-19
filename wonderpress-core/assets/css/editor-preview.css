@@ -1,0 +1,47 @@
+/**
+ * Block inspector styles for wonderpress-editor-preview.js
+ */
+
+.wonderpress-inspector-field-group {
+	border: 1px solid #e0e0e0;
+	border-radius: 2px;
+	box-sizing: border-box;
+	margin: 0 0 16px;
+	min-width: 0;
+	padding: 12px 12px 4px;
+}
+
+.wonderpress-inspector-field-group__legend {
+	display: block;
+	float: left;
+	margin-bottom: 8px;
+	padding: 0 4px;
+}
+
+.wonderpress-inspector-field-group__help {
+	clear: both;
+	margin: 0 0 12px;
+}
+
+.wonderpress-inspector-field-group__inner {
+	clear: both;
+}
+
+.wonderpress-editor-image-control__preview {
+	display: block;
+	height: auto;
+	margin-bottom: 8px;
+	max-width: 100%;
+}
+
+.wonderpress-editor-image-control__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.wonderpress-editor-link-control__advanced {
+	border-top: 1px solid #f0f0f0;
+	margin-top: 4px;
+	padding-top: 8px;
+}
