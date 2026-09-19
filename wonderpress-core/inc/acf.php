@@ -332,7 +332,7 @@ if ( ! function_exists( 'wonder_acf_composition_instance_field' ) ) {
 		}
 
 		$instance_id = $row['id'];
-		$key_prefix  = 'field_wndr_' . $instance_id;
+		$key_prefix  = 'field_wndr_' . wonder_acf_field_key_suffix( $instance_id );
 
 		$sub_fields = array();
 		foreach ( (array) ( $partial_manifest['properties'] ?? array() ) as $prop ) {
@@ -361,12 +361,45 @@ if ( ! function_exists( 'wonder_acf_composition_instance_field' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wonder_acf_field_key_suffix' ) ) {
+	/**
+	 * Sanitize an id for ACF field keys (keys must not rely on raw hyphens).
+	 *
+	 * @param string $id Composition or tab id.
+	 * @return string
+	 */
+	function wonder_acf_field_key_suffix( $id ) {
+		$suffix = preg_replace( '/[^a-z0-9_]+/', '_', strtolower( (string) $id ) );
+		return trim( $suffix, '_' );
+	}
+}
+
+if ( ! function_exists( 'wonder_acf_tab_endpoint_stopper_field' ) ) {
+	/**
+	 * Close an ACF tab group so following fields sit outside tabs.
+	 *
+	 * @param string $suffix Unique key suffix.
+	 * @return array
+	 */
+	function wonder_acf_tab_endpoint_stopper_field( $suffix ) {
+		return array(
+			'key'       => 'field_wndr_tab_end_' . $suffix,
+			'label'     => '',
+			'name'      => '',
+			'type'      => 'tab',
+			'placement' => 'top',
+			'endpoint'  => 1,
+		);
+	}
+}
+
 if ( ! function_exists( 'wonder_acf_fields_from_template_composition' ) ) {
 	/**
 	 * Ordered ACF fields for a template composition (groups + tab UI).
 	 *
 	 * Root instance rows have no leading tab. Tab rows insert an ACF tab field
-	 * then their child instance groups.
+	 * then their child instance groups. ACF requires endpoint markers when fields
+	 * appear before the first tab and when returning to root-level groups.
 	 *
 	 * @param array $composition Template manifest composition.
 	 * @return array
@@ -376,7 +409,10 @@ if ( ! function_exists( 'wonder_acf_fields_from_template_composition' ) ) {
 			return array();
 		}
 
-		$fields = array();
+		$fields           = array();
+		$tab_group_open   = false;
+		$has_fields_above = false;
+		$stopper_index    = 0;
 
 		foreach ( $composition as $row ) {
 			if ( ! is_array( $row ) || empty( $row['id'] ) ) {
@@ -389,26 +425,48 @@ if ( ! function_exists( 'wonder_acf_fields_from_template_composition' ) ) {
 					? $row['label']
 					: wonder_acf_humanize( $tab_id );
 
-				$fields[] = array(
-					'key'       => 'field_wndr_tab_' . $tab_id,
+				$child_groups = array();
+				foreach ( (array) $row['items'] as $child ) {
+					$group = wonder_acf_composition_instance_field( $child );
+					if ( $group ) {
+						$child_groups[] = $group;
+					}
+				}
+
+				if ( ! $child_groups ) {
+					continue;
+				}
+
+				$key_suffix = wonder_acf_field_key_suffix( $tab_id );
+				$fields[]   = array(
+					'key'       => 'field_wndr_tab_' . $key_suffix,
 					'label'     => $label,
 					'name'      => '',
 					'type'      => 'tab',
 					'placement' => 'top',
+					'endpoint'  => $has_fields_above ? 1 : 0,
+					'selected'  => 0,
 				);
 
-				foreach ( (array) $row['items'] as $child ) {
-					$group = wonder_acf_composition_instance_field( $child );
-					if ( $group ) {
-						$fields[] = $group;
-					}
+				foreach ( $child_groups as $group ) {
+					$fields[] = $group;
 				}
+
+				$tab_group_open   = true;
+				$has_fields_above = true;
 				continue;
+			}
+
+			if ( $tab_group_open ) {
+				$fields[]       = wonder_acf_tab_endpoint_stopper_field( (string) $stopper_index );
+				$stopper_index++;
+				$tab_group_open = false;
 			}
 
 			$group = wonder_acf_composition_instance_field( $row );
 			if ( $group ) {
-				$fields[] = $group;
+				$fields[]         = $group;
+				$has_fields_above = true;
 			}
 		}
 
