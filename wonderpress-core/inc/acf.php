@@ -365,28 +365,50 @@ if ( ! function_exists( 'wonder_acf_field_key_suffix' ) ) {
 	}
 }
 
-if ( ! function_exists( 'wonder_acf_composition_instance_field' ) ) {
+if ( ! function_exists( 'wonder_acf_composition_row_is_field_group' ) ) {
 	/**
-	 * ACF group field for one composition instance row.
+	 * Whether a composition row defines inline fields (no partial).
 	 *
-	 * @param array $row Instance row (id + partial).
+	 * @param array $row Composition row.
+	 * @return bool
+	 */
+	function wonder_acf_composition_row_is_field_group( $row ) {
+		return is_array( $row )
+			&& ! empty( $row['properties'] )
+			&& is_array( $row['properties'] );
+	}
+}
+
+if ( ! function_exists( 'wonder_acf_composition_group_field' ) ) {
+	/**
+	 * ACF group field for one composition row (partial instance or inline properties).
+	 *
+	 * @param array $row Composition content row.
 	 * @return array|null
 	 */
-	function wonder_acf_composition_instance_field( $row ) {
-		if ( empty( $row['id'] ) || empty( $row['partial'] ) ) {
-			return null;
-		}
-
-		$partial_manifest = wonder_theme_manifest( $row['partial'] );
-		if ( ! $partial_manifest || empty( $partial_manifest['acf_compatible'] ) ) {
+	function wonder_acf_composition_group_field( $row ) {
+		if ( empty( $row['id'] ) ) {
 			return null;
 		}
 
 		$instance_id = $row['id'];
 		$key_prefix  = 'field_wndr_' . wonder_acf_field_key_suffix( $instance_id );
+		$sub_fields  = array();
+		$properties  = array();
 
-		$sub_fields = array();
-		foreach ( (array) ( $partial_manifest['properties'] ?? array() ) as $prop ) {
+		if ( ! empty( $row['partial'] ) && is_string( $row['partial'] ) ) {
+			$partial_manifest = wonder_theme_manifest( $row['partial'] );
+			if ( ! $partial_manifest || empty( $partial_manifest['acf_compatible'] ) ) {
+				return null;
+			}
+			$properties = (array) ( $partial_manifest['properties'] ?? array() );
+		} elseif ( wonder_acf_composition_row_is_field_group( $row ) ) {
+			$properties = $row['properties'];
+		} else {
+			return null;
+		}
+
+		foreach ( $properties as $prop ) {
 			$mapped = wonder_acf_field_from_property( $prop, $key_prefix );
 			if ( $mapped ) {
 				$sub_fields[] = $mapped;
@@ -409,6 +431,22 @@ if ( ! function_exists( 'wonder_acf_composition_instance_field' ) ) {
 			'layout'     => 'block',
 			'sub_fields' => $sub_fields,
 		);
+	}
+}
+
+if ( ! function_exists( 'wonder_acf_composition_instance_field' ) ) {
+	/**
+	 * ACF group field for a partial-backed composition row.
+	 *
+	 * @param array $row Instance row (id + partial).
+	 * @return array|null
+	 */
+	function wonder_acf_composition_instance_field( $row ) {
+		if ( empty( $row['partial'] ) ) {
+			return null;
+		}
+
+		return wonder_acf_composition_group_field( $row );
 	}
 }
 
@@ -497,7 +535,7 @@ if ( ! function_exists( 'wonder_acf_fields_from_template_composition' ) ) {
 
 				$child_groups = array();
 				foreach ( (array) $row['items'] as $child ) {
-					$group = wonder_acf_composition_instance_field( $child );
+					$group = wonder_acf_composition_group_field( $child );
 					if ( $group ) {
 						$child_groups[] = $group;
 					}
@@ -540,7 +578,7 @@ if ( ! function_exists( 'wonder_acf_fields_from_template_composition' ) ) {
 				$tab_group_open = false;
 			}
 
-			$group = wonder_acf_composition_instance_field( $row );
+			$group = wonder_acf_composition_group_field( $row );
 			if ( $group ) {
 				$fields[]         = $group;
 				$has_fields_above = true;
@@ -548,6 +586,23 @@ if ( ! function_exists( 'wonder_acf_fields_from_template_composition' ) ) {
 		}
 
 		return $fields;
+	}
+}
+
+if ( ! function_exists( 'wonder_template_composition_field' ) ) {
+	/**
+	 * Values for an inline composition field group (no partial).
+	 *
+	 * @param string $instance_id Composition row id (ACF group name).
+	 * @return array
+	 */
+	function wonder_template_composition_field( $instance_id ) {
+		if ( ! function_exists( 'get_field' ) || ! is_string( $instance_id ) || '' === $instance_id ) {
+			return array();
+		}
+
+		$value = get_field( $instance_id );
+		return is_array( $value ) ? $value : array();
 	}
 }
 
