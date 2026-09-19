@@ -313,6 +313,85 @@ if ( ! function_exists( 'wonder_page_lock' ) ) {
 	add_filter( 'block_editor_settings_all', 'wonder_page_lock', 10, 2 );
 }
 
+if ( ! function_exists( 'wonder_block_editor_schemas' ) ) {
+	/**
+	 * Manifest property definitions for blocks, keyed by block name.
+	 *
+	 * block.json attribute types alone cannot express manifest types (select vs
+	 * string, email, textarea hints, when rules). The editor reads this map.
+	 *
+	 * @return array<string, array{properties: array<int, array<string, mixed>>}>
+	 */
+	function wonder_block_editor_schemas() {
+		if ( ! function_exists( 'wonder_load_theme_manifests' ) ) {
+			return array();
+		}
+
+		$schemas = array();
+
+		foreach ( wonder_load_theme_manifests() as $manifest ) {
+			if ( empty( $manifest['block'] ) || empty( $manifest['properties'] ) || ! is_array( $manifest['properties'] ) ) {
+				continue;
+			}
+
+			$properties = array();
+
+			foreach ( $manifest['properties'] as $prop ) {
+				if ( empty( $prop['name'] ) || empty( $prop['type'] ) ) {
+					continue;
+				}
+
+				$entry = array(
+					'name' => (string) $prop['name'],
+					'type' => (string) $prop['type'],
+				);
+
+				if ( ! empty( $prop['label'] ) && is_string( $prop['label'] ) ) {
+					$entry['label'] = $prop['label'];
+				}
+
+				if ( isset( $prop['description'] ) ) {
+					$entry['description'] = (string) $prop['description'];
+				}
+
+				if ( ! empty( $prop['required'] ) ) {
+					$entry['required'] = true;
+				}
+
+				if ( ! empty( $prop['choices'] ) && is_array( $prop['choices'] ) ) {
+					$entry['choices'] = $prop['choices'];
+				}
+
+				if ( ! empty( $prop['when'] ) && is_array( $prop['when'] ) ) {
+					$entry['when'] = $prop['when'];
+				}
+
+				if ( ! empty( $prop['acf'] ) && is_array( $prop['acf'] ) ) {
+					$acf_hint = array();
+					foreach ( array( 'rows', 'format' ) as $acf_key ) {
+						if ( isset( $prop['acf'][ $acf_key ] ) ) {
+							$acf_hint[ $acf_key ] = $prop['acf'][ $acf_key ];
+						}
+					}
+					if ( $acf_hint ) {
+						$entry['acf'] = $acf_hint;
+					}
+				}
+
+				$properties[] = $entry;
+			}
+
+			if ( $properties ) {
+				$schemas[ (string) $manifest['block'] ] = array(
+					'properties' => $properties,
+				);
+			}
+		}
+
+		return $schemas;
+	}
+}
+
 if ( ! function_exists( 'wonder_enqueue_block_editor_preview' ) ) {
 	/**
 	 * Register the theme's blocks in the editor, and preview them there.
@@ -364,6 +443,15 @@ if ( ! function_exists( 'wonder_enqueue_block_editor_preview' ) ) {
 			'window.wonderpressEditorBlocks = ' . wp_json_encode( array_keys( $blocks ) ) . ';',
 			'before'
 		);
+
+		$schemas = wonder_block_editor_schemas();
+		if ( $schemas ) {
+			wp_add_inline_script(
+				'wonderpress-editor-preview',
+				'window.wonderpressBlockSchemas = ' . wp_json_encode( $schemas ) . ';',
+				'before'
+			);
+		}
 	}
 
 	add_action( 'enqueue_block_editor_assets', 'wonder_enqueue_block_editor_preview' );
