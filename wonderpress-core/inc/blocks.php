@@ -431,7 +431,16 @@ if ( ! function_exists( 'wonder_enqueue_block_editor_preview' ) ) {
 		wp_enqueue_script(
 			'wonderpress-editor-preview',
 			$src,
-			array( 'wp-blocks', 'wp-element', 'wp-block-editor', 'wp-components', 'wp-server-side-render' ),
+			array(
+				'wp-blocks',
+				'wp-element',
+				'wp-block-editor',
+				'wp-components',
+				'wp-server-side-render',
+				'wp-i18n',
+				'media-upload',
+				'wp-media-utils',
+			),
 			filemtime( $absolute_path ),
 			true
 		);

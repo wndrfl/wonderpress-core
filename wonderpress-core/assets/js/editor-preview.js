@@ -33,14 +33,18 @@
 	}
 
 	var el                = wp.element.createElement;
+	var Fragment          = wp.element.Fragment;
 	var ServerSideRender  = wp.serverSideRender;
 	var useBlockProps     = wp.blockEditor.useBlockProps;
 	var InspectorControls = wp.blockEditor.InspectorControls;
+	var MediaUpload       = wp.blockEditor.MediaUpload;
+	var MediaUploadCheck  = wp.blockEditor.MediaUploadCheck;
 	var PanelBody         = wp.components.PanelBody;
 	var TextControl       = wp.components.TextControl;
 	var TextareaControl   = wp.components.TextareaControl;
 	var ToggleControl     = wp.components.ToggleControl;
 	var SelectControl     = wp.components.SelectControl;
+	var Button            = wp.components.Button;
 	var Placeholder       = wp.components.Placeholder;
 
 	var blockSchemas = window.wonderpressBlockSchemas || {};
@@ -128,6 +132,69 @@
 		} );
 	}
 
+	function imageAttachmentId( value ) {
+		if ( ! value || typeof value !== 'object' ) {
+			return 0;
+		}
+		if ( value.ID ) {
+			return parseInt( value.ID, 10 ) || 0;
+		}
+		if ( value.id ) {
+			return parseInt( value.id, 10 ) || 0;
+		}
+		return 0;
+	}
+
+	function imagePreviewUrl( value ) {
+		if ( ! value || typeof value !== 'object' ) {
+			return '';
+		}
+		if ( value.url ) {
+			return String( value.url );
+		}
+		if ( value.sizes && value.sizes.thumbnail && value.sizes.thumbnail.url ) {
+			return String( value.sizes.thumbnail.url );
+		}
+		return '';
+	}
+
+	/**
+	 * Map a wp.media attachment to the canonical image array (ACF parity).
+	 */
+	function imageValueFromMedia( media ) {
+		if ( ! media || ! media.id ) {
+			return null;
+		}
+
+		var sizes = {};
+		if ( media.sizes && typeof media.sizes === 'object' ) {
+			Object.keys( media.sizes ).forEach( function ( sizeName ) {
+				var size = media.sizes[ sizeName ];
+				if ( ! size || ! size.url ) {
+					return;
+				}
+				sizes[ sizeName ] = {
+					url: size.url,
+					width: size.width || 0,
+					height: size.height || 0,
+				};
+			} );
+		}
+
+		return {
+			ID: media.id,
+			id: media.id,
+			url: media.url || '',
+			alt: media.alt || '',
+			width: media.width || 0,
+			height: media.height || 0,
+			sizes: sizes,
+			title: media.title || '',
+			mime_type: media.mime || '',
+			type: 'image',
+		};
+	}
+
 	function isTextareaField( propDef, key ) {
 		if ( propDef && propDef.acf ) {
 			if ( propDef.acf.format === 'textarea' || propDef.acf.rows ) {
@@ -145,10 +212,19 @@
 		} );
 	}
 
+	function isEmptyAttributeValue( value ) {
+		if ( value === undefined || value === null || value === '' || value === false ) {
+			return true;
+		}
+		if ( typeof value === 'object' && ! Array.isArray( value ) ) {
+			return ! imageAttachmentId( value );
+		}
+		return false;
+	}
+
 	function isUntouched( props, blockType ) {
 		return declaredAttributes( blockType ).every( function ( key ) {
-			var value = props.attributes[ key ];
-			return value === undefined || value === null || value === '' || value === false;
+			return isEmptyAttributeValue( props.attributes[ key ] );
 		} );
 	}
 
@@ -249,6 +325,70 @@
 					onChange: set,
 					__nextHasNoMarginBottom: true,
 				} ) );
+				return fields;
+			}
+
+			if ( manifestType === 'image' ) {
+				var attachmentId = imageAttachmentId( value );
+				var previewUrl   = imagePreviewUrl( value );
+
+				fields.push(
+					el(
+						'div',
+						{ key: key, className: 'wonderpress-editor-image-control' },
+						el( 'p', { className: 'components-base-control__label', style: { marginBottom: '8px' } }, label ),
+						help ? el( 'p', { className: 'components-base-control__help', style: { marginTop: 0 } }, help ) : null,
+						el(
+							MediaUploadCheck,
+							null,
+							el( MediaUpload, {
+								onSelect: function ( media ) {
+									set( imageValueFromMedia( media ) );
+								},
+								allowedTypes: [ 'image' ],
+								value: attachmentId || undefined,
+								render: function ( renderProps ) {
+									return el(
+										Fragment,
+										null,
+										previewUrl
+											? el( 'img', {
+												src: previewUrl,
+												alt: ( value && value.alt ) ? value.alt : '',
+												style: { display: 'block', maxWidth: '100%', height: 'auto', marginBottom: '8px' },
+											} )
+											: null,
+										el(
+											'div',
+											{ style: { display: 'flex', gap: '8px', flexWrap: 'wrap' } },
+											el(
+												Button,
+												{
+													variant: attachmentId ? 'secondary' : 'primary',
+													onClick: renderProps.open,
+												},
+												attachmentId ? 'Replace image' : 'Select image'
+											),
+											attachmentId
+												? el(
+													Button,
+													{
+														variant: 'link',
+														isDestructive: true,
+														onClick: function () {
+															set( null );
+														},
+													},
+													'Remove'
+												)
+												: null
+										)
+									);
+								},
+							} )
+						)
+					)
+				);
 				return fields;
 			}
 
