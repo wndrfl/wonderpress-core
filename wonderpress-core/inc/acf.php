@@ -431,6 +431,32 @@ if ( ! function_exists( 'wonder_acf_tab_endpoint_stopper_field' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wonder_acf_tab_placement_for_template_manifest' ) ) {
+	/**
+	 * ACF tab placement for composition tab rows.
+	 *
+	 * @param array $template_manifest Parsed template manifest.
+	 * @return string `left` or `top`.
+	 */
+	function wonder_acf_tab_placement_for_template_manifest( $template_manifest ) {
+		$editor = isset( $template_manifest['editor'] ) && is_array( $template_manifest['editor'] )
+			? $template_manifest['editor']
+			: array();
+		$acf    = isset( $editor['acf'] ) && is_array( $editor['acf'] ) ? $editor['acf'] : array();
+		$explicit = isset( $acf['tabPlacement'] ) ? $acf['tabPlacement'] : null;
+
+		if ( 'left' === $explicit || 'top' === $explicit ) {
+			return $explicit;
+		}
+
+		$composition = isset( $template_manifest['composition'] ) && is_array( $template_manifest['composition'] )
+			? $template_manifest['composition']
+			: array();
+
+		return wonder_acf_composition_tab_row_count( $composition ) >= 2 ? 'top' : 'left';
+	}
+}
+
 if ( ! function_exists( 'wonder_acf_fields_from_template_composition' ) ) {
 	/**
 	 * Ordered ACF fields for a template composition (groups + tab UI).
@@ -439,12 +465,17 @@ if ( ! function_exists( 'wonder_acf_fields_from_template_composition' ) ) {
 	 * then their child instance groups. ACF requires endpoint markers when fields
 	 * appear before the first tab and when returning to root-level groups.
 	 *
-	 * @param array $composition Template manifest composition.
+	 * @param array  $composition   Template manifest composition.
+	 * @param string $tab_placement ACF tab placement (`left` or `top`).
 	 * @return array
 	 */
-	function wonder_acf_fields_from_template_composition( $composition ) {
+	function wonder_acf_fields_from_template_composition( $composition, $tab_placement = 'left' ) {
 		if ( ! is_array( $composition ) ) {
 			return array();
+		}
+
+		if ( 'top' !== $tab_placement ) {
+			$tab_placement = 'left';
 		}
 
 		$fields           = array();
@@ -452,8 +483,6 @@ if ( ! function_exists( 'wonder_acf_fields_from_template_composition' ) ) {
 		$has_fields_above = false;
 		$stopper_index    = 0;
 		$tab_index        = 0;
-		$tab_row_count    = wonder_acf_composition_tab_row_count( $composition );
-		$tab_placement    = $tab_row_count >= 2 ? 'top' : 'left';
 
 		foreach ( $composition as $row ) {
 			if ( ! is_array( $row ) || empty( $row['id'] ) ) {
@@ -480,13 +509,18 @@ if ( ! function_exists( 'wonder_acf_fields_from_template_composition' ) ) {
 
 				$key_suffix = wonder_acf_field_key_suffix( $tab_id );
 
+				// endpoint 1 only when opening a tab group after root-level fields.
+				// Further tab rows in the same manifest run stay endpoint 0 so ACF
+				// keeps one horizontal (or left) tab set instead of stacking groups.
+				$start_new_tab_group = $has_fields_above && ! $tab_group_open;
+
 				$fields[] = array(
 					'key'       => 'field_wndr_tab_' . $key_suffix,
 					'label'     => $label,
 					'name'      => '',
 					'type'      => 'tab',
 					'placement' => $tab_placement,
-					'endpoint'  => $has_fields_above ? 1 : 0,
+					'endpoint'  => $start_new_tab_group ? 1 : 0,
 					'selected'  => 0 === $tab_index ? 1 : 0,
 				);
 				$tab_index++;
@@ -529,8 +563,9 @@ if ( ! function_exists( 'wonder_acf_group_from_template_manifest' ) ) {
 			return null;
 		}
 
-		$template = $template_manifest['template'];
-		$fields   = wonder_acf_fields_from_template_composition( $template_manifest['composition'] );
+		$template       = $template_manifest['template'];
+		$tab_placement  = wonder_acf_tab_placement_for_template_manifest( $template_manifest );
+		$fields         = wonder_acf_fields_from_template_composition( $template_manifest['composition'], $tab_placement );
 
 		if ( ! $fields ) {
 			return null;
