@@ -6,16 +6,16 @@
 	border: 1px solid #e0e0e0;
 	border-radius: 2px;
 	box-sizing: border-box;
-	margin: 0 0 16px;
+	margin: 0 0 12px;
 	min-width: 0;
-	padding: 12px 12px 4px;
+	padding: 12px;
 }
 
 .wonderpress-inspector-field-group__legend {
 	display: block;
-	float: left;
-	margin-bottom: 8px;
-	padding: 0 4px;
+	margin: 0 0 8px;
+	padding: 0;
+	width: 100%;
 }
 
 .wonderpress-inspector-field-group__help {
@@ -24,7 +24,12 @@
 }
 
 .wonderpress-inspector-field-group__inner {
-	clear: both;
+	display: flow-root;
+}
+
+.wonderpress-inspector-field-group__inner > .components-base-control:last-child,
+.wonderpress-inspector-field-group__inner > .wonderpress-editor-link-control__advanced:last-child .components-base-control:last-child {
+	margin-bottom: 0;
 }
 
 .wonderpress-editor-image-control__preview {
@@ -43,5 +48,6 @@
 .wonderpress-editor-link-control__advanced {
 	border-top: 1px solid #f0f0f0;
 	margin-top: 4px;
+	padding-bottom: 4px;
 	padding-top: 8px;
 }
