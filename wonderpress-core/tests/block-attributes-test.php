@@ -45,4 +45,18 @@ assert( 'Alt text' === $from_id['alt'] );
 assert( null === wonder_normalize_image_value( null ) );
 assert( null === wonder_normalize_image_value( array() ) );
 
+$from_link = wonder_normalize_link_value(
+	array(
+		'content'         => 'Read more',
+		'url'             => 'https://example.test',
+		'open_in_new_tab' => 1,
+		'title'           => 'About us',
+	)
+);
+assert( is_array( $from_link ) );
+assert( 'Read more' === $from_link['content'] );
+assert( true === $from_link['open_in_new_tab'] );
+
+assert( null === wonder_normalize_link_value( array( 'content' => '', 'url' => '', 'title' => '' ) ) );
+
 echo "block-attributes-test: OK\n";

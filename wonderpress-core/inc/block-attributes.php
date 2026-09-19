@@ -91,6 +91,39 @@ if ( ! function_exists( 'wonder_normalize_image_value' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wonder_normalize_link_value' ) ) {
+	/**
+	 * Coerce block-stored link data to the simple four-field ACF group shape.
+	 *
+	 * @param mixed $value Raw block attribute.
+	 * @return array|null
+	 */
+	function wonder_normalize_link_value( $value ) {
+		if ( null === $value || false === $value || '' === $value || array() === $value ) {
+			return null;
+		}
+
+		if ( ! is_array( $value ) ) {
+			return null;
+		}
+
+		$content = isset( $value['content'] ) ? (string) $value['content'] : '';
+		$url     = isset( $value['url'] ) ? (string) $value['url'] : '';
+		$title   = isset( $value['title'] ) ? (string) $value['title'] : '';
+
+		if ( '' === $content && '' === $url && '' === $title ) {
+			return null;
+		}
+
+		return array(
+			'content'         => $content,
+			'url'             => $url,
+			'open_in_new_tab' => ! empty( $value['open_in_new_tab'] ),
+			'title'           => $title,
+		);
+	}
+}
+
 if ( ! function_exists( 'wonder_normalize_property_value' ) ) {
 	/**
 	 * Normalize one manifest property value from block storage.
@@ -106,6 +139,8 @@ if ( ! function_exists( 'wonder_normalize_property_value' ) ) {
 		switch ( $type ) {
 			case 'image':
 				return wonder_normalize_image_value( $value );
+			case 'link':
+				return wonder_normalize_link_value( $value );
 			default:
 				return $value;
 		}

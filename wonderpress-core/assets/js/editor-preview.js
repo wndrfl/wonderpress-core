@@ -213,12 +213,35 @@
 		} );
 	}
 
+	function linkObjectHasContent( value ) {
+		if ( ! value || typeof value !== 'object' ) {
+			return false;
+		}
+		return !!( value.url || value.content || value.title );
+	}
+
+	function linkValueFromAttribute( value ) {
+		var link = value && typeof value === 'object' ? value : {};
+		return {
+			content: link.content ? String( link.content ) : '',
+			url: link.url ? String( link.url ) : '',
+			open_in_new_tab: !! link.open_in_new_tab,
+			title: link.title ? String( link.title ) : '',
+		};
+	}
+
 	function isEmptyAttributeValue( value ) {
 		if ( value === undefined || value === null || value === '' || value === false ) {
 			return true;
 		}
 		if ( typeof value === 'object' && ! Array.isArray( value ) ) {
-			return ! imageAttachmentId( value );
+			if ( imageAttachmentId( value ) ) {
+				return false;
+			}
+			if ( linkObjectHasContent( value ) ) {
+				return false;
+			}
+			return true;
 		}
 		return false;
 	}
@@ -395,6 +418,65 @@
 								},
 							} )
 						)
+					)
+				);
+				return fields;
+			}
+
+			if ( manifestType === 'link' ) {
+				var linkVal = linkValueFromAttribute( value );
+
+				function patchLink( patch ) {
+					var next = linkValueFromAttribute( value );
+					Object.keys( patch ).forEach( function ( patchKey ) {
+						next[ patchKey ] = patch[ patchKey ];
+					} );
+					set( next );
+				}
+
+				fields.push(
+					el(
+						BaseControl,
+						{
+							key: key,
+							className: 'wonderpress-editor-link-control',
+							label: label,
+							help: help,
+							__nextHasNoMarginBottom: true,
+						},
+						el( TextControl, {
+							label: 'Link text',
+							value: linkVal.content,
+							onChange: function ( next ) {
+								patchLink( { content: next } );
+							},
+							__nextHasNoMarginBottom: true,
+						} ),
+						el( TextControl, {
+							label: 'URL',
+							type: 'url',
+							value: linkVal.url,
+							onChange: function ( next ) {
+								patchLink( { url: next } );
+							},
+							__nextHasNoMarginBottom: true,
+						} ),
+						el( TextControl, {
+							label: 'Title attribute',
+							value: linkVal.title,
+							onChange: function ( next ) {
+								patchLink( { title: next } );
+							},
+							__nextHasNoMarginBottom: true,
+						} ),
+						el( ToggleControl, {
+							label: 'Open in new tab',
+							checked: linkVal.open_in_new_tab,
+							onChange: function ( next ) {
+								patchLink( { open_in_new_tab: next } );
+							},
+							__nextHasNoMarginBottom: true,
+						} )
 					)
 				);
 				return fields;
