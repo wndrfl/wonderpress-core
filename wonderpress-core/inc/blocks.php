@@ -368,7 +368,7 @@ if ( ! function_exists( 'wonder_block_editor_schemas' ) ) {
 
 				if ( ! empty( $prop['acf'] ) && is_array( $prop['acf'] ) ) {
 					$acf_hint = array();
-					foreach ( array( 'rows', 'format' ) as $acf_key ) {
+					foreach ( array( 'rows', 'format', 'post_type', 'return_format' ) as $acf_key ) {
 						if ( isset( $prop['acf'][ $acf_key ] ) ) {
 							$acf_hint[ $acf_key ] = $prop['acf'][ $acf_key ];
 						}
@@ -451,6 +451,7 @@ if ( ! function_exists( 'wonder_enqueue_block_editor_preview' ) ) {
 				'wp-components',
 				'wp-server-side-render',
 				'wp-i18n',
+				'wp-api-fetch',
 				'media-upload',
 				'wp-media-utils',
 			),

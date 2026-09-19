@@ -29,12 +29,15 @@
 ( function ( wp, names ) {
 	'use strict';
 
-	if ( ! wp || ! wp.blocks || ! wp.element || ! wp.serverSideRender || ! wp.blockEditor || ! wp.components ) {
+	if ( ! wp || ! wp.blocks || ! wp.element || ! wp.serverSideRender || ! wp.blockEditor || ! wp.components || ! wp.apiFetch ) {
 		return;
 	}
 
 	var el                = wp.element.createElement;
 	var Fragment          = wp.element.Fragment;
+	var useState          = wp.element.useState;
+	var useEffect         = wp.element.useEffect;
+	var apiFetch          = wp.apiFetch;
 	var ServerSideRender  = wp.serverSideRender;
 	var useBlockProps     = wp.blockEditor.useBlockProps;
 	var InspectorControls = wp.blockEditor.InspectorControls;
@@ -47,6 +50,7 @@
 	var SelectControl     = wp.components.SelectControl;
 	var Button            = wp.components.Button;
 	var BaseControl       = wp.components.BaseControl;
+	var ComboboxControl   = wp.components.ComboboxControl;
 	var Placeholder       = wp.components.Placeholder;
 
 	var blockSchemas = window.wonderpressBlockSchemas || {};
@@ -86,6 +90,138 @@
 				: null,
 			el( 'div', { className: 'wonderpress-inspector-field-group__inner' }, config.children )
 		);
+	}
+
+	function postTypesFromPropDef( propDef ) {
+		var postType = propDef && propDef.acf && propDef.acf.post_type;
+		if ( ! postType ) {
+			return [ 'post' ];
+		}
+		return Array.isArray( postType ) ? postType : [ postType ];
+	}
+
+	function restCollectionForPostType( postType ) {
+		if ( postType === 'post' ) {
+			return 'posts';
+		}
+		if ( postType === 'page' ) {
+			return 'pages';
+		}
+		return postType;
+	}
+
+	function postObjectIdFromValue( value ) {
+		if ( value === null || value === undefined || value === '' ) {
+			return 0;
+		}
+		if ( typeof value === 'number' ) {
+			return value > 0 ? value : 0;
+		}
+		if ( typeof value === 'object' ) {
+			if ( value.ID ) {
+				return parseInt( value.ID, 10 ) || 0;
+			}
+			if ( value.id ) {
+				return parseInt( value.id, 10 ) || 0;
+			}
+		}
+		return 0;
+	}
+
+	function fetchPostLabel( postId, postTypes ) {
+		var lookups = postTypes.map( function ( postType ) {
+			var collection = restCollectionForPostType( postType );
+			return apiFetch( {
+				path: '/wp/v2/' + collection + '/' + postId + '?context=embed',
+			} ).then( function ( record ) {
+				if ( record && record.title && record.title.rendered ) {
+					return record.title.rendered;
+				}
+				return null;
+			} ).catch( function () {
+				return null;
+			} );
+		} );
+
+		return Promise.all( lookups ).then( function ( labels ) {
+			for ( var i = 0; i < labels.length; i++ ) {
+				if ( labels[ i ] ) {
+					return labels[ i ];
+				}
+			}
+			return '#' + postId;
+		} );
+	}
+
+	function PostObjectControl( props ) {
+		var propDef    = props.propDef;
+		var value      = props.value;
+		var onChange   = props.onChange;
+		var postTypes  = postTypesFromPropDef( propDef );
+		var selectedId = postObjectIdFromValue( value );
+		var comboboxValue = selectedId ? String( selectedId ) : '';
+
+		var optionsState = useState( [] );
+		var options      = optionsState[0];
+		var setOptions   = optionsState[1];
+		var loadingState = useState( false );
+		var loading      = loadingState[0];
+		var setLoading   = loadingState[1];
+
+		useEffect( function () {
+			if ( ! selectedId ) {
+				return;
+			}
+			fetchPostLabel( selectedId, postTypes ).then( function ( label ) {
+				setOptions( function ( prev ) {
+					var valueKey = String( selectedId );
+					if ( prev.some( function ( option ) { return option.value === valueKey; } ) ) {
+						return prev;
+					}
+					return [ { label: label, value: valueKey } ].concat( prev );
+				} );
+			} );
+		}, [ selectedId ] );
+
+		function searchPosts( term ) {
+			if ( ! term || term.length < 2 ) {
+				return;
+			}
+			setLoading( true );
+			apiFetch( {
+				path: '/wp/v2/search?search=' + encodeURIComponent( term ) + '&subtype=' + encodeURIComponent( postTypes.join( ',' ) ) + '&per_page=15',
+			} ).then( function ( results ) {
+				setOptions( ( results || [] ).map( function ( item ) {
+					return {
+						label: item.title || ( '#' + item.id ),
+						value: String( item.id ),
+					};
+				} ) );
+			} ).catch( function () {
+				setOptions( [] );
+			} ).finally( function () {
+				setLoading( false );
+			} );
+		}
+
+		return el( ComboboxControl, {
+			label: 'Search',
+			hideLabelFromVision: true,
+			placeholder: 'Search ' + postTypes.join( ', ' ) + '…',
+			value: comboboxValue,
+			options: options,
+			onFilterValueChange: searchPosts,
+			onChange: function ( next ) {
+				if ( ! next ) {
+					onChange( null );
+					return;
+				}
+				onChange( { ID: parseInt( next, 10 ) } );
+			},
+			isLoading: loading,
+			allowReset: true,
+			__nextHasNoMarginBottom: true,
+		} );
 	}
 
 	function propertyDef( blockName, attrName ) {
@@ -267,7 +403,13 @@
 			if ( linkObjectHasContent( value ) ) {
 				return false;
 			}
+			if ( postObjectIdFromValue( value ) ) {
+				return false;
+			}
 			return true;
+		}
+		if ( typeof value === 'number' ) {
+			return value <= 0;
 		}
 		return false;
 	}
@@ -501,6 +643,23 @@
 								} )
 							)
 						),
+					} )
+				);
+				return fields;
+			}
+
+			if ( manifestType === 'post_object' ) {
+				fields.push(
+					inspectorFieldGroup( {
+						key: key,
+						className: 'wonderpress-editor-post-object-control',
+						label: label,
+						help: help,
+						children: el( PostObjectControl, {
+							propDef: propDef,
+							value: value,
+							onChange: set,
+						} ),
 					} )
 				);
 				return fields;

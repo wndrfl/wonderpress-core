@@ -59,4 +59,8 @@ assert( true === $from_link['open_in_new_tab'] );
 
 assert( null === wonder_normalize_link_value( array( 'content' => '', 'url' => '', 'title' => '' ) ) );
 
+assert( 42 === wonder_normalize_post_object_value( 42 ) );
+assert( 7 === wonder_normalize_post_object_value( array( 'ID' => 7 ) ) );
+assert( null === wonder_normalize_post_object_value( null ) );
+
 echo "block-attributes-test: OK\n";

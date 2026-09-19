@@ -124,6 +124,42 @@ if ( ! function_exists( 'wonder_normalize_link_value' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wonder_normalize_post_object_value' ) ) {
+	/**
+	 * Reduce block-stored post references to a post ID (flat partial property).
+	 *
+	 * @param mixed $value Raw block attribute.
+	 * @return int|null
+	 */
+	function wonder_normalize_post_object_value( $value ) {
+		if ( null === $value || false === $value || '' === $value || array() === $value ) {
+			return null;
+		}
+
+		if ( is_numeric( $value ) ) {
+			$id = (int) $value;
+			return $id > 0 ? $id : null;
+		}
+
+		if ( is_object( $value ) ) {
+			$value = (array) $value;
+		}
+
+		if ( is_array( $value ) ) {
+			if ( ! empty( $value['ID'] ) ) {
+				$id = (int) $value['ID'];
+				return $id > 0 ? $id : null;
+			}
+			if ( ! empty( $value['id'] ) ) {
+				$id = (int) $value['id'];
+				return $id > 0 ? $id : null;
+			}
+		}
+
+		return null;
+	}
+}
+
 if ( ! function_exists( 'wonder_normalize_property_value' ) ) {
 	/**
 	 * Normalize one manifest property value from block storage.
@@ -141,6 +177,8 @@ if ( ! function_exists( 'wonder_normalize_property_value' ) ) {
 				return wonder_normalize_image_value( $value );
 			case 'link':
 				return wonder_normalize_link_value( $value );
+			case 'post_object':
+				return wonder_normalize_post_object_value( $value );
 			default:
 				return $value;
 		}
