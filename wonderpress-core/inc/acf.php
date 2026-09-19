@@ -120,29 +120,142 @@ if ( ! function_exists( 'wonder_acf_is_textarea_name' ) ) {
 	}
 }
 
-if ( ! function_exists( 'wonder_acf_field_from_property' ) ) {
+if ( ! function_exists( 'wonder_acf_property_field_key' ) ) {
 	/**
-	 * Map one manifest property to an ACF field array.
+	 * Stable ACF field key for one manifest property name under a prefix.
 	 *
-	 * Returns null for types this slice will not guess (array, object, a
-	 * nested repeater). The caller decides whether to complain.
+	 * @param string $key_prefix e.g. field_wndr_hero.
+	 * @param string $name       Property name.
+	 * @return string
+	 */
+	function wonder_acf_property_field_key( $key_prefix, $name ) {
+		return $key_prefix . '_' . $name;
+	}
+}
+
+if ( ! function_exists( 'wonder_acf_allowed_passthrough_keys' ) ) {
+	/**
+	 * Manifest `acf` keys that may be merged onto a compiled field.
+	 *
+	 * @return string[]
+	 */
+	function wonder_acf_allowed_passthrough_keys() {
+		return array(
+			'choices',
+			'default_value',
+			'ui',
+			'post_type',
+			'return_format',
+			'preview_size',
+			'library',
+			'layout',
+			'wrapper',
+			'allow_null',
+			'multiple',
+			'placeholder',
+			'min',
+			'max',
+			'step',
+			'rows',
+		);
+	}
+}
+
+if ( ! function_exists( 'wonder_acf_apply_acf_passthrough' ) ) {
+	/**
+	 * Merge whitelisted manifest `acf` overrides onto a field array.
+	 *
+	 * @param array $field Compiled ACF field.
+	 * @param array $prop  Manifest property.
+	 * @return array
+	 */
+	function wonder_acf_apply_acf_passthrough( $field, $prop ) {
+		if ( empty( $prop['acf'] ) || ! is_array( $prop['acf'] ) ) {
+			return $field;
+		}
+
+		$allowed = wonder_acf_allowed_passthrough_keys();
+		foreach ( $prop['acf'] as $acf_key => $acf_value ) {
+			if ( in_array( $acf_key, $allowed, true ) ) {
+				$field[ $acf_key ] = $acf_value;
+			}
+		}
+
+		return $field;
+	}
+}
+
+if ( ! function_exists( 'wonder_acf_conditional_logic_from_when' ) ) {
+	/**
+	 * Compile manifest `when` rules into ACF conditional_logic (field keys).
+	 *
+	 * @param array $when        Manifest when groups (OR of AND groups).
+	 * @param array $name_to_key Map of sibling property name => ACF field key.
+	 * @return array|null Null when no valid rules remain.
+	 */
+	function wonder_acf_conditional_logic_from_when( $when, $name_to_key ) {
+		if ( ! is_array( $when ) || ! $when ) {
+			return null;
+		}
+
+		$logic = array();
+
+		foreach ( $when as $and_group ) {
+			if ( ! is_array( $and_group ) || ! $and_group ) {
+				continue;
+			}
+
+			$compiled_group = array();
+			foreach ( $and_group as $rule ) {
+				if ( ! is_array( $rule ) || empty( $rule['field'] ) || empty( $rule['operator'] ) ) {
+					continue;
+				}
+
+				$ref_name = (string) $rule['field'];
+				if ( empty( $name_to_key[ $ref_name ] ) ) {
+					continue;
+				}
+
+				$compiled_group[] = array(
+					'field'    => $name_to_key[ $ref_name ],
+					'operator' => (string) $rule['operator'],
+					'value'    => array_key_exists( 'value', $rule ) ? $rule['value'] : '',
+				);
+			}
+
+			if ( $compiled_group ) {
+				$logic[] = $compiled_group;
+			}
+		}
+
+		return $logic ? $logic : null;
+	}
+}
+
+if ( ! function_exists( 'wonder_acf_build_field_from_property' ) ) {
+	/**
+	 * Map one manifest property to an ACF field array (no conditional_logic).
 	 *
 	 * @param array  $prop       A manifest property.
 	 * @param string $key_prefix Stable ACF key prefix (`field_wndr_{slug}`).
 	 * @return array|null
 	 */
-	function wonder_acf_field_from_property( $prop, $key_prefix ) {
+	function wonder_acf_build_field_from_property( $prop, $key_prefix ) {
 		if ( empty( $prop['name'] ) || empty( $prop['type'] ) ) {
 			return null;
 		}
 
 		$name = $prop['name'];
 		$type = $prop['type'];
-		$key  = $key_prefix . '_' . $name;
+		$key  = wonder_acf_property_field_key( $key_prefix, $name );
+
+		$label = ! empty( $prop['label'] ) && is_string( $prop['label'] )
+			? $prop['label']
+			: wonder_acf_humanize( $name );
 
 		$field = array(
 			'key'          => $key,
-			'label'        => wonder_acf_humanize( $name ),
+			'label'        => $label,
 			'name'         => $name,
 			'instructions' => isset( $prop['description'] ) ? (string) $prop['description'] : '',
 			'required'     => ! empty( $prop['required'] ) ? 1 : 0,
@@ -150,12 +263,55 @@ if ( ! function_exists( 'wonder_acf_field_from_property' ) ) {
 
 		switch ( $type ) {
 			case 'string':
-				$field['type'] = wonder_acf_is_textarea_name( $name ) ? 'textarea' : 'text';
-				return $field;
+				$use_textarea = wonder_acf_is_textarea_name( $name );
+				if ( ! empty( $prop['acf']['rows'] ) || ( isset( $prop['acf']['format'] ) && 'textarea' === $prop['acf']['format'] ) ) {
+					$use_textarea = true;
+				}
+				$field['type'] = $use_textarea ? 'textarea' : 'text';
+				return wonder_acf_apply_acf_passthrough( $field, $prop );
 
 			case 'boolean':
 				$field['type'] = 'true_false';
 				$field['ui']   = 1;
+				return wonder_acf_apply_acf_passthrough( $field, $prop );
+
+			case 'email':
+				$field['type'] = 'email';
+				return wonder_acf_apply_acf_passthrough( $field, $prop );
+
+			case 'select':
+				$choices = array();
+				if ( ! empty( $prop['choices'] ) && is_array( $prop['choices'] ) ) {
+					$choices = $prop['choices'];
+				}
+				if ( ! $choices ) {
+					_doing_it_wrong(
+						__FUNCTION__,
+						sprintf(
+							/* translators: %s: property name */
+							esc_html__( 'Select property "%s" must declare choices.', 'wonderpress' ),
+							esc_html( $name )
+						),
+						'2.2.0'
+					);
+					return null;
+				}
+				$field['type']    = 'select';
+				$field['choices'] = $choices;
+				if ( isset( $prop['default'] ) ) {
+					$field['default_value'] = $prop['default'];
+				}
+				return wonder_acf_apply_acf_passthrough( $field, $prop );
+
+			case 'post_object':
+				$field['type'] = 'post_object';
+				$field          = wonder_acf_apply_acf_passthrough( $field, $prop );
+				if ( empty( $field['return_format'] ) ) {
+					$field['return_format'] = 'object';
+				}
+				if ( empty( $field['post_type'] ) ) {
+					$field['post_type'] = array( 'post' );
+				}
 				return $field;
 
 			case 'image':
@@ -163,34 +319,34 @@ if ( ! function_exists( 'wonder_acf_field_from_property' ) ) {
 				$field['return_format'] = 'array';
 				$field['preview_size']  = 'medium';
 				$field['library']       = 'all';
-				return $field;
+				return wonder_acf_apply_acf_passthrough( $field, $prop );
 
 			case 'link':
 				$field['type']       = 'group';
 				$field['layout']     = 'block';
 				$field['sub_fields'] = array(
-					wonder_acf_field_from_property(
+					wonder_acf_build_field_from_property(
 						array(
 							'name' => 'content',
 							'type' => 'string',
 						),
 						$key
 					),
-					wonder_acf_field_from_property(
+					wonder_acf_build_field_from_property(
 						array(
 							'name' => 'url',
 							'type' => 'string',
 						),
 						$key
 					),
-					wonder_acf_field_from_property(
+					wonder_acf_build_field_from_property(
 						array(
 							'name' => 'open_in_new_tab',
 							'type' => 'boolean',
 						),
 						$key
 					),
-					wonder_acf_field_from_property(
+					wonder_acf_build_field_from_property(
 						array(
 							'name' => 'title',
 							'type' => 'string',
@@ -205,7 +361,6 @@ if ( ! function_exists( 'wonder_acf_field_from_property' ) ) {
 					return null;
 				}
 
-				$sub_fields = array();
 				foreach ( $prop['properties'] as $sub ) {
 					if ( ! empty( $sub['type'] ) && 'repeater' === $sub['type'] ) {
 						_doing_it_wrong(
@@ -217,15 +372,10 @@ if ( ! function_exists( 'wonder_acf_field_from_property' ) ) {
 							),
 							'2.1.0'
 						);
-						continue;
-					}
-
-					$mapped = wonder_acf_field_from_property( $sub, $key );
-					if ( $mapped ) {
-						$sub_fields[] = $mapped;
 					}
 				}
 
+				$sub_fields = wonder_acf_fields_from_properties( $prop['properties'], $key );
 				if ( ! $sub_fields ) {
 					return null;
 				}
@@ -234,21 +384,80 @@ if ( ! function_exists( 'wonder_acf_field_from_property' ) ) {
 				$field['layout']       = 'row';
 				$field['button_label'] = __( 'Add row', 'wonderpress' );
 				$field['sub_fields']   = $sub_fields;
-				return $field;
+				return wonder_acf_apply_acf_passthrough( $field, $prop );
 
 			default:
 				_doing_it_wrong(
 					__FUNCTION__,
 					sprintf(
 						/* translators: 1: property name, 2: property type */
-						esc_html__( 'Property "%1$s" has type "%2$s", which cannot be mapped to an ACF field. Use string, boolean, image, link, or repeater.', 'wonderpress' ),
+						esc_html__( 'Property "%1$s" has type "%2$s", which cannot be mapped to an ACF field.', 'wonderpress' ),
 						esc_html( $name ),
 						esc_html( $type )
 					),
-					'2.1.0'
+					'2.2.0'
 				);
 				return null;
 		}
+	}
+}
+
+if ( ! function_exists( 'wonder_acf_fields_from_properties' ) ) {
+	/**
+	 * Map manifest properties to ACF fields (two-pass: keys, then conditionals).
+	 *
+	 * @param array  $properties Property definitions sharing one field group.
+	 * @param string $key_prefix Stable ACF key prefix.
+	 * @return array
+	 */
+	function wonder_acf_fields_from_properties( $properties, $key_prefix ) {
+		if ( ! is_array( $properties ) || ! $properties ) {
+			return array();
+		}
+
+		$name_to_key = array();
+		foreach ( $properties as $prop ) {
+			if ( empty( $prop['name'] ) ) {
+				continue;
+			}
+			$name_to_key[ $prop['name'] ] = wonder_acf_property_field_key( $key_prefix, $prop['name'] );
+		}
+
+		$fields = array();
+		foreach ( $properties as $prop ) {
+			$field = wonder_acf_build_field_from_property( $prop, $key_prefix );
+			if ( ! $field ) {
+				continue;
+			}
+
+			if ( ! empty( $prop['when'] ) ) {
+				$logic = wonder_acf_conditional_logic_from_when( $prop['when'], $name_to_key );
+				if ( $logic ) {
+					$field['conditional_logic'] = $logic;
+				}
+			}
+
+			$fields[] = $field;
+		}
+
+		return $fields;
+	}
+}
+
+if ( ! function_exists( 'wonder_acf_field_from_property' ) ) {
+	/**
+	 * Map one manifest property to an ACF field array.
+	 *
+	 * When the property uses `when`, pass the full sibling list via
+	 * wonder_acf_fields_from_properties() instead.
+	 *
+	 * @param array  $prop       A manifest property.
+	 * @param string $key_prefix Stable ACF key prefix (`field_wndr_{slug}`).
+	 * @return array|null
+	 */
+	function wonder_acf_field_from_property( $prop, $key_prefix ) {
+		$fields = wonder_acf_fields_from_properties( array( $prop ), $key_prefix );
+		return $fields ? $fields[0] : null;
 	}
 }
 
@@ -267,13 +476,7 @@ if ( ! function_exists( 'wonder_acf_group_from_manifest' ) ) {
 		$slug = $manifest['slug'];
 		$key  = 'field_wndr_' . $slug;
 
-		$sub_fields = array();
-		foreach ( (array) ( $manifest['properties'] ?? array() ) as $prop ) {
-			$mapped = wonder_acf_field_from_property( $prop, $key );
-			if ( $mapped ) {
-				$sub_fields[] = $mapped;
-			}
-		}
+		$sub_fields = wonder_acf_fields_from_properties( (array) ( $manifest['properties'] ?? array() ), $key );
 
 		if ( ! $sub_fields ) {
 			return null;
@@ -392,9 +595,8 @@ if ( ! function_exists( 'wonder_acf_composition_group_field' ) ) {
 		}
 
 		$instance_id = $row['id'];
-		$key_prefix  = 'field_wndr_' . wonder_acf_field_key_suffix( $instance_id );
-		$sub_fields  = array();
-		$properties  = array();
+		$key_prefix = 'field_wndr_' . wonder_acf_field_key_suffix( $instance_id );
+		$properties = array();
 
 		if ( ! empty( $row['partial'] ) && is_string( $row['partial'] ) ) {
 			$partial_manifest = wonder_theme_manifest( $row['partial'] );
@@ -408,12 +610,7 @@ if ( ! function_exists( 'wonder_acf_composition_group_field' ) ) {
 			return null;
 		}
 
-		foreach ( $properties as $prop ) {
-			$mapped = wonder_acf_field_from_property( $prop, $key_prefix );
-			if ( $mapped ) {
-				$sub_fields[] = $mapped;
-			}
-		}
+		$sub_fields = wonder_acf_fields_from_properties( $properties, $key_prefix );
 
 		if ( ! $sub_fields ) {
 			return null;
