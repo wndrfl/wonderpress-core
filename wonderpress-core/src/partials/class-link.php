@@ -131,9 +131,20 @@ class Link extends Abstract_Partial {
 					if ( empty( $params['acf']['telephone'] ) ) {
 						break;
 					}
-					$this->url = 'tel:+' . $params['acf']['telephone'];
+					$tel = preg_replace( '/\s+/', '', (string) $params['acf']['telephone'] );
+					$tel = ltrim( $tel, '+' );
+					$this->url = 'tel:+' . $tel;
+					break;
+				case 'url':
+					if ( ! empty( $params['acf']['url'] ) ) {
+						$this->url = (string) $params['acf']['url'];
+					}
 					break;
 			}
+		}
+
+		if ( $this->url && ! empty( $params['acf']['add_query_params'] ) && ! empty( $params['acf']['query_params'] ) ) {
+			$this->url = \wonder_link_append_query_params( $this->url, $params['acf']['query_params'] );
 		}
 	}
 }

@@ -39,26 +39,29 @@ if ( ! function_exists( 'wonder_theme_manifests' ) ) {
 	}
 }
 
-if ( ! function_exists( 'wonder_load_theme_manifests' ) ) {
+if ( ! function_exists( 'wonder_core_partial_manifest_dir' ) ) {
 	/**
-	 * Scan `.wonderpress/manifest/partials/*.json` in the active theme.
+	 * Bundled partial manifests shipped with wonderpress-core.
 	 *
-	 * Same theme root as blocks/: get_stylesheet_directory(). Quiet if the
-	 * directory does not exist.
-	 *
-	 * @return array[] Keyed by slug.
+	 * @return string Absolute path to manifest/partials inside the package.
 	 */
-	function wonder_load_theme_manifests() {
-		if ( is_array( wonder_theme_manifests() ) ) {
-			return wonder_theme_manifests();
-		}
+	function wonder_core_partial_manifest_dir() {
+		return dirname( __DIR__ ) . DIRECTORY_SEPARATOR . 'manifest' . DIRECTORY_SEPARATOR . 'partials';
+	}
+}
 
-		wonder_theme_manifests( null, true );
-
-		$manifest_dir = get_stylesheet_directory() . DIRECTORY_SEPARATOR . '.wonderpress' . DIRECTORY_SEPARATOR . 'manifest' . DIRECTORY_SEPARATOR . 'partials';
-
+if ( ! function_exists( 'wonder_load_core_partial_manifests' ) ) {
+	/**
+	 * Load JSON manifests bundled with the core package (e.g. Link primitive).
+	 *
+	 * Theme manifests with the same slug override these entries.
+	 *
+	 * @return void
+	 */
+	function wonder_load_core_partial_manifests() {
+		$manifest_dir = wonder_core_partial_manifest_dir();
 		if ( ! is_dir( $manifest_dir ) ) {
-			return wonder_theme_manifests();
+			return;
 		}
 
 		foreach ( glob( $manifest_dir . DIRECTORY_SEPARATOR . '*.json' ) as $path ) {
@@ -73,6 +76,45 @@ if ( ! function_exists( 'wonder_load_theme_manifests' ) ) {
 			}
 
 			wonder_theme_manifests( $data );
+		}
+	}
+}
+
+if ( ! function_exists( 'wonder_load_theme_manifests' ) ) {
+	/**
+	 * Scan `.wonderpress/manifest/partials/*.json` in the active theme.
+	 *
+	 * Core bundled manifests load first; the theme may override by slug.
+	 * Same theme root as blocks/: get_stylesheet_directory(). Quiet if the
+	 * directory does not exist.
+	 *
+	 * @return array[] Keyed by slug.
+	 */
+	function wonder_load_theme_manifests() {
+		if ( is_array( wonder_theme_manifests() ) ) {
+			return wonder_theme_manifests();
+		}
+
+		wonder_theme_manifests( null, true );
+
+		wonder_load_core_partial_manifests();
+
+		$manifest_dir = get_stylesheet_directory() . DIRECTORY_SEPARATOR . '.wonderpress' . DIRECTORY_SEPARATOR . 'manifest' . DIRECTORY_SEPARATOR . 'partials';
+
+		if ( is_dir( $manifest_dir ) ) {
+			foreach ( glob( $manifest_dir . DIRECTORY_SEPARATOR . '*.json' ) as $path ) {
+				$raw = file_get_contents( $path );
+				if ( false === $raw ) {
+					continue;
+				}
+
+				$data = json_decode( $raw, true );
+				if ( ! is_array( $data ) || empty( $data['slug'] ) || ! is_string( $data['slug'] ) ) {
+					continue;
+				}
+
+				wonder_theme_manifests( $data );
+			}
 		}
 
 		return wonder_theme_manifests();
