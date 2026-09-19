@@ -52,24 +52,18 @@ if ( ! function_exists( 'wonder_acf_locations_for' ) ) {
 	/**
 	 * Resolve ACF location rules for a partial slug.
 	 *
-	 * Merges optional `acf.location` from the manifest with every template
-	 * in wonder_template_fields() that lists the slug. Each source is an OR
-	 * group. Returns an empty array when nothing locates the partial.
+	 * Built from wonder_template_fields() (composition-derived map plus the
+	 * wonderpress_template_fields filter). Each template match is an OR group.
+	 * Returns an empty array when nothing locates the partial.
 	 *
-	 * @param string $slug     The partial slug.
-	 * @param array  $manifest The parsed manifest.
+	 * Partial manifests do not carry location rules; template manifests and the
+	 * theme filter own placement.
+	 *
+	 * @param string $slug The partial slug.
 	 * @return array
 	 */
-	function wonder_acf_locations_for( $slug, $manifest ) {
+	function wonder_acf_locations_for( $slug ) {
 		$groups = array();
-
-		if ( ! empty( $manifest['acf']['location'] ) && is_array( $manifest['acf']['location'] ) ) {
-			foreach ( $manifest['acf']['location'] as $group ) {
-				if ( is_array( $group ) ) {
-					$groups[] = $group;
-				}
-			}
-		}
 
 		foreach ( wonder_template_fields() as $template => $slugs ) {
 			if ( ! in_array( $slug, (array) $slugs, true ) ) {
@@ -876,16 +870,16 @@ if ( ! function_exists( 'wonder_register_acf_groups' ) ) {
 				continue;
 			}
 
-			$location = wonder_acf_locations_for( $slug, $manifest );
+			$location = wonder_acf_locations_for( $slug );
 			if ( ! $location ) {
 				_doing_it_wrong(
 					__FUNCTION__,
 					sprintf(
 						/* translators: %s: partial slug */
-						esc_html__( 'Partial "%s" is ACF compatible but has no location. Add it to wonderpress_template_fields or set acf.location on the manifest; otherwise the group is not registered.', 'wonderpress' ),
+						esc_html__( 'Partial "%s" is ACF compatible but has no location. Add it to a template composition or wonderpress_template_fields; otherwise the group is not registered.', 'wonderpress' ),
 						esc_html( $slug )
 					),
-					'2.1.0'
+					'2.2.0'
 				);
 				continue;
 			}
