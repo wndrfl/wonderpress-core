@@ -330,8 +330,8 @@ if ( ! function_exists( 'wonder_acf_composition_tab_row_count' ) ) {
 	/**
 	 * How many tab-container rows exist in a composition.
 	 *
-	 * ACF only renders a tab bar when a field group has two or more tabs; a
-	 * single tab row uses a message heading instead so fields stay visible.
+	 * Used to pick tab placement (left for a lone tab row, top when there are
+	 * two or more — ACF does not draw a top tab bar for a single top tab).
 	 *
 	 * @param array|null $composition Template composition.
 	 * @return int
@@ -419,13 +419,13 @@ if ( ! function_exists( 'wonder_acf_tab_endpoint_stopper_field' ) ) {
 	 * @param string $suffix Unique key suffix.
 	 * @return array
 	 */
-	function wonder_acf_tab_endpoint_stopper_field( $suffix ) {
+	function wonder_acf_tab_endpoint_stopper_field( $suffix, $placement = 'top' ) {
 		return array(
 			'key'       => 'field_wndr_tab_end_' . $suffix,
 			'label'     => '',
 			'name'      => '',
 			'type'      => 'tab',
-			'placement' => 'top',
+			'placement' => $placement,
 			'endpoint'  => 1,
 		);
 	}
@@ -451,8 +451,9 @@ if ( ! function_exists( 'wonder_acf_fields_from_template_composition' ) ) {
 		$tab_group_open   = false;
 		$has_fields_above = false;
 		$stopper_index    = 0;
-		$use_acf_tabs     = wonder_acf_composition_tab_row_count( $composition ) >= 2;
 		$tab_index        = 0;
+		$tab_row_count    = wonder_acf_composition_tab_row_count( $composition );
+		$tab_placement    = $tab_row_count >= 2 ? 'top' : 'left';
 
 		foreach ( $composition as $row ) {
 			if ( ! is_array( $row ) || empty( $row['id'] ) ) {
@@ -479,29 +480,12 @@ if ( ! function_exists( 'wonder_acf_fields_from_template_composition' ) ) {
 
 				$key_suffix = wonder_acf_field_key_suffix( $tab_id );
 
-				if ( ! $use_acf_tabs ) {
-					$fields[] = array(
-						'key'     => 'field_wndr_section_' . $key_suffix,
-						'label'   => $label,
-						'name'    => '',
-						'type'    => 'message',
-						'message' => $label,
-					);
-
-					foreach ( $child_groups as $group ) {
-						$fields[] = $group;
-					}
-
-					$has_fields_above = true;
-					continue;
-				}
-
 				$fields[] = array(
 					'key'       => 'field_wndr_tab_' . $key_suffix,
 					'label'     => $label,
 					'name'      => '',
 					'type'      => 'tab',
-					'placement' => 'top',
+					'placement' => $tab_placement,
 					'endpoint'  => $has_fields_above ? 1 : 0,
 					'selected'  => 0 === $tab_index ? 1 : 0,
 				);
@@ -516,8 +500,8 @@ if ( ! function_exists( 'wonder_acf_fields_from_template_composition' ) ) {
 				continue;
 			}
 
-			if ( $tab_group_open && $use_acf_tabs ) {
-				$fields[]       = wonder_acf_tab_endpoint_stopper_field( (string) $stopper_index );
+			if ( $tab_group_open ) {
+				$fields[]       = wonder_acf_tab_endpoint_stopper_field( (string) $stopper_index, $tab_placement );
 				$stopper_index++;
 				$tab_group_open = false;
 			}
