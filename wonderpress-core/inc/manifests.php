@@ -1,6 +1,6 @@
 <?php
 /**
- * Load the theme's partial manifests from `.wonderpress/manifest/`.
+ * Load the theme's partial manifests from `.wonderpress/manifest/partials/`.
  *
  * The CLI writes one JSON file per component; this is the shared runtime
  * index. Consumers (ACF field registration today, others later) call
@@ -41,7 +41,7 @@ if ( ! function_exists( 'wonder_theme_manifests' ) ) {
 
 if ( ! function_exists( 'wonder_load_theme_manifests' ) ) {
 	/**
-	 * Scan `.wonderpress/manifest/*.json` in the active theme.
+	 * Scan `.wonderpress/manifest/partials/*.json` in the active theme.
 	 *
 	 * Same theme root as blocks/: get_stylesheet_directory(). Quiet if the
 	 * directory does not exist.
@@ -55,7 +55,7 @@ if ( ! function_exists( 'wonder_load_theme_manifests' ) ) {
 
 		wonder_theme_manifests( null, true );
 
-		$manifest_dir = get_stylesheet_directory() . DIRECTORY_SEPARATOR . '.wonderpress' . DIRECTORY_SEPARATOR . 'manifest';
+		$manifest_dir = get_stylesheet_directory() . DIRECTORY_SEPARATOR . '.wonderpress' . DIRECTORY_SEPARATOR . 'manifest' . DIRECTORY_SEPARATOR . 'partials';
 
 		if ( ! is_dir( $manifest_dir ) ) {
 			return wonder_theme_manifests();

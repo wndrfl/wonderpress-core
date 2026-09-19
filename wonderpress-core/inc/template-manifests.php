@@ -1,6 +1,6 @@
 <?php
 /**
- * Load page-template manifests from `.wonderpress/templates/`.
+ * Load page-template manifests from `.wonderpress/manifest/page-templates/`.
  *
  * @package Wonderpress Core
  */
@@ -82,7 +82,7 @@ if ( ! function_exists( 'wonder_parse_template_manifest_data' ) ) {
 
 if ( ! function_exists( 'wonder_load_template_manifests' ) ) {
 	/**
-	 * Scan `.wonderpress/templates/*.json` in the active theme.
+	 * Scan `.wonderpress/manifest/page-templates/*.json` in the active theme.
 	 *
 	 * @return array[] Keyed by template slug.
 	 */
@@ -93,7 +93,7 @@ if ( ! function_exists( 'wonder_load_template_manifests' ) ) {
 
 		wonder_theme_template_manifests( null, true );
 
-		$dir = get_stylesheet_directory() . DIRECTORY_SEPARATOR . '.wonderpress' . DIRECTORY_SEPARATOR . 'templates';
+		$dir = get_stylesheet_directory() . DIRECTORY_SEPARATOR . '.wonderpress' . DIRECTORY_SEPARATOR . 'manifest' . DIRECTORY_SEPARATOR . 'page-templates';
 
 		if ( ! is_dir( $dir ) ) {
 			return wonder_theme_template_manifests();
