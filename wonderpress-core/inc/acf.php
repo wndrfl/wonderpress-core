@@ -314,6 +314,108 @@ if ( ! function_exists( 'wonder_acf_template_group_key' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wonder_acf_composition_instance_field' ) ) {
+	/**
+	 * ACF group field for one composition instance row.
+	 *
+	 * @param array $row Instance row (id + partial).
+	 * @return array|null
+	 */
+	function wonder_acf_composition_instance_field( $row ) {
+		if ( empty( $row['id'] ) || empty( $row['partial'] ) ) {
+			return null;
+		}
+
+		$partial_manifest = wonder_theme_manifest( $row['partial'] );
+		if ( ! $partial_manifest || empty( $partial_manifest['acf_compatible'] ) ) {
+			return null;
+		}
+
+		$instance_id = $row['id'];
+		$key_prefix  = 'field_wndr_' . $instance_id;
+
+		$sub_fields = array();
+		foreach ( (array) ( $partial_manifest['properties'] ?? array() ) as $prop ) {
+			$mapped = wonder_acf_field_from_property( $prop, $key_prefix );
+			if ( $mapped ) {
+				$sub_fields[] = $mapped;
+			}
+		}
+
+		if ( ! $sub_fields ) {
+			return null;
+		}
+
+		$label = ! empty( $row['label'] ) && is_string( $row['label'] )
+			? $row['label']
+			: wonder_acf_humanize( $instance_id );
+
+		return array(
+			'key'        => $key_prefix,
+			'label'      => $label,
+			'name'       => $instance_id,
+			'type'       => 'group',
+			'layout'     => 'block',
+			'sub_fields' => $sub_fields,
+		);
+	}
+}
+
+if ( ! function_exists( 'wonder_acf_fields_from_template_composition' ) ) {
+	/**
+	 * Ordered ACF fields for a template composition (groups + tab UI).
+	 *
+	 * Root instance rows have no leading tab. Tab rows insert an ACF tab field
+	 * then their child instance groups.
+	 *
+	 * @param array $composition Template manifest composition.
+	 * @return array
+	 */
+	function wonder_acf_fields_from_template_composition( $composition ) {
+		if ( ! is_array( $composition ) ) {
+			return array();
+		}
+
+		$fields = array();
+
+		foreach ( $composition as $row ) {
+			if ( ! is_array( $row ) || empty( $row['id'] ) ) {
+				continue;
+			}
+
+			if ( function_exists( 'wonder_composition_row_is_tab' ) && wonder_composition_row_is_tab( $row ) ) {
+				$tab_id = $row['id'];
+				$label  = ! empty( $row['label'] ) && is_string( $row['label'] )
+					? $row['label']
+					: wonder_acf_humanize( $tab_id );
+
+				$fields[] = array(
+					'key'       => 'field_wndr_tab_' . $tab_id,
+					'label'     => $label,
+					'name'      => '',
+					'type'      => 'tab',
+					'placement' => 'top',
+				);
+
+				foreach ( (array) $row['items'] as $child ) {
+					$group = wonder_acf_composition_instance_field( $child );
+					if ( $group ) {
+						$fields[] = $group;
+					}
+				}
+				continue;
+			}
+
+			$group = wonder_acf_composition_instance_field( $row );
+			if ( $group ) {
+				$fields[] = $group;
+			}
+		}
+
+		return $fields;
+	}
+}
+
 if ( ! function_exists( 'wonder_acf_group_from_template_manifest' ) ) {
 	/**
 	 * One ACF field group for a template composition (instance ids as fields).
@@ -327,46 +429,7 @@ if ( ! function_exists( 'wonder_acf_group_from_template_manifest' ) ) {
 		}
 
 		$template = $template_manifest['template'];
-		$fields   = array();
-
-		foreach ( $template_manifest['composition'] as $row ) {
-			if ( empty( $row['id'] ) || empty( $row['partial'] ) ) {
-				continue;
-			}
-
-			$partial_manifest = wonder_theme_manifest( $row['partial'] );
-			if ( ! $partial_manifest || empty( $partial_manifest['acf_compatible'] ) ) {
-				continue;
-			}
-
-			$instance_id = $row['id'];
-			$key_prefix  = 'field_wndr_' . $instance_id;
-
-			$sub_fields = array();
-			foreach ( (array) ( $partial_manifest['properties'] ?? array() ) as $prop ) {
-				$mapped = wonder_acf_field_from_property( $prop, $key_prefix );
-				if ( $mapped ) {
-					$sub_fields[] = $mapped;
-				}
-			}
-
-			if ( ! $sub_fields ) {
-				continue;
-			}
-
-			$label = ! empty( $row['label'] ) && is_string( $row['label'] )
-				? $row['label']
-				: wonder_acf_humanize( $instance_id );
-
-			$fields[] = array(
-				'key'        => $key_prefix,
-				'label'      => $label,
-				'name'       => $instance_id,
-				'type'       => 'group',
-				'layout'     => 'block',
-				'sub_fields' => $sub_fields,
-			);
-		}
+		$fields   = wonder_acf_fields_from_template_composition( $template_manifest['composition'] );
 
 		if ( ! $fields ) {
 			return null;

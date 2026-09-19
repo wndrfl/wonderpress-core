@@ -69,7 +69,7 @@ if ( ! function_exists( 'wonder_render_template_sections' ) ) {
 			return;
 		}
 
-		foreach ( $manifest['composition'] as $row ) {
+		foreach ( wonder_flatten_template_composition( $manifest['composition'] ) as $row ) {
 			if ( empty( $row['partial'] ) || empty( $row['id'] ) ) {
 				continue;
 			}

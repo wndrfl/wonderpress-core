@@ -247,6 +247,54 @@ if ( ! function_exists( 'wonder_template_locks_from_manifests' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wonder_composition_row_is_tab' ) ) {
+	/**
+	 * Whether a composition row is a tab container (nested partial instances).
+	 *
+	 * @param array $row Composition row.
+	 * @return bool
+	 */
+	function wonder_composition_row_is_tab( $row ) {
+		return is_array( $row ) && isset( $row['items'] ) && is_array( $row['items'] );
+	}
+}
+
+if ( ! function_exists( 'wonder_flatten_template_composition' ) ) {
+	/**
+	 * Instance rows only, in document order (root and tab children).
+	 *
+	 * @param array|null $composition Template manifest composition.
+	 * @return array[]
+	 */
+	function wonder_flatten_template_composition( $composition ) {
+		if ( ! is_array( $composition ) ) {
+			return array();
+		}
+
+		$flat = array();
+		foreach ( $composition as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+
+			if ( wonder_composition_row_is_tab( $row ) ) {
+				foreach ( $row['items'] as $child ) {
+					if ( is_array( $child ) && ! empty( $child['partial'] ) && ! wonder_composition_row_is_tab( $child ) ) {
+						$flat[] = $child;
+					}
+				}
+				continue;
+			}
+
+			if ( ! empty( $row['partial'] ) ) {
+				$flat[] = $row;
+			}
+		}
+
+		return $flat;
+	}
+}
+
 if ( ! function_exists( 'wonder_template_fields_from_manifests' ) ) {
 	/**
 	 * Partial slugs referenced in template composition, keyed by template.
@@ -262,7 +310,7 @@ if ( ! function_exists( 'wonder_template_fields_from_manifests' ) ) {
 			}
 
 			$template = $manifest['template'];
-			foreach ( $manifest['composition'] as $row ) {
+			foreach ( wonder_flatten_template_composition( $manifest['composition'] ) as $row ) {
 				if ( empty( $row['partial'] ) || ! is_string( $row['partial'] ) ) {
 					continue;
 				}
@@ -291,7 +339,7 @@ if ( ! function_exists( 'wonder_partial_in_any_composition' ) ) {
 			if ( empty( $manifest['composition'] ) || ! is_array( $manifest['composition'] ) ) {
 				continue;
 			}
-			foreach ( $manifest['composition'] as $row ) {
+			foreach ( wonder_flatten_template_composition( $manifest['composition'] ) as $row ) {
 				if ( isset( $row['partial'] ) && $partial_slug === $row['partial'] ) {
 					return true;
 				}
