@@ -45,6 +45,7 @@
 	var ToggleControl     = wp.components.ToggleControl;
 	var SelectControl     = wp.components.SelectControl;
 	var Button            = wp.components.Button;
+	var BaseControl       = wp.components.BaseControl;
 	var Placeholder       = wp.components.Placeholder;
 
 	var blockSchemas = window.wonderpressBlockSchemas || {};
@@ -334,10 +335,14 @@
 
 				fields.push(
 					el(
-						'div',
-						{ key: key, className: 'wonderpress-editor-image-control' },
-						el( 'p', { className: 'components-base-control__label', style: { marginBottom: '8px' } }, label ),
-						help ? el( 'p', { className: 'components-base-control__help', style: { marginTop: 0 } }, help ) : null,
+						BaseControl,
+						{
+							key: key,
+							className: 'wonderpress-editor-image-control',
+							label: label,
+							help: help,
+							__nextHasNoMarginBottom: true,
+						},
 						el(
 							MediaUploadCheck,
 							null,
@@ -360,7 +365,10 @@
 											: null,
 										el(
 											'div',
-											{ style: { display: 'flex', gap: '8px', flexWrap: 'wrap' } },
+											{
+												className: 'wonderpress-editor-image-control__actions',
+												style: { display: 'flex', gap: '8px', flexWrap: 'wrap' },
+											},
 											el(
 												Button,
 												{
