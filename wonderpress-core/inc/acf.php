@@ -226,6 +226,44 @@ if ( ! function_exists( 'wonder_acf_conditional_logic_from_when' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wonder_acf_partial_manifest_properties' ) ) {
+	/**
+	 * Property definitions from a referenced partial manifest (embed primitive).
+	 *
+	 * @param string $partial_slug Partial slug (e.g. link).
+	 * @return array
+	 */
+	function wonder_acf_partial_manifest_properties( $partial_slug ) {
+		$partial_slug = (string) $partial_slug;
+		if ( '' === $partial_slug ) {
+			return array();
+		}
+
+		$from_core = array();
+		if ( function_exists( 'wonder_core_partial_manifest_dir' ) ) {
+			$path = wonder_core_partial_manifest_dir() . DIRECTORY_SEPARATOR . $partial_slug . '.json';
+			if ( is_readable( $path ) ) {
+				$raw = file_get_contents( $path );
+				if ( false !== $raw ) {
+					$data = json_decode( $raw, true );
+					if ( is_array( $data ) && ! empty( $data['properties'] ) && is_array( $data['properties'] ) ) {
+						$from_core = $data['properties'];
+					}
+				}
+			}
+		}
+
+		if ( function_exists( 'wonder_theme_manifest' ) && function_exists( 'get_stylesheet_directory' ) ) {
+			$manifest = wonder_theme_manifest( $partial_slug );
+			if ( is_array( $manifest ) && ! empty( $manifest['properties'] ) && is_array( $manifest['properties'] ) ) {
+				return $manifest['properties'];
+			}
+		}
+
+		return $from_core;
+	}
+}
+
 if ( ! function_exists( 'wonder_acf_build_field_from_property' ) ) {
 	/**
 	 * Map one manifest property to an ACF field array (no conditional_logic).
@@ -313,6 +351,28 @@ if ( ! function_exists( 'wonder_acf_build_field_from_property' ) ) {
 				$field['return_format'] = 'array';
 				$field['preview_size']  = 'medium';
 				$field['library']       = 'all';
+				return wonder_acf_apply_acf_passthrough( $field, $prop );
+
+			case 'partial':
+				$ref_slug = ! empty( $prop['partial'] ) ? (string) $prop['partial'] : '';
+				$ref_props = wonder_acf_partial_manifest_properties( $ref_slug );
+				if ( ! $ref_props ) {
+					_doing_it_wrong(
+						__FUNCTION__,
+						sprintf(
+							/* translators: 1: property name, 2: partial slug */
+							esc_html__( 'Partial property "%1$s" references unknown or empty partial "%2$s".', 'wonderpress' ),
+							esc_html( $name ),
+							esc_html( $ref_slug )
+						),
+						'2.3.0'
+					);
+					return null;
+				}
+
+				$field['type']       = 'group';
+				$field['layout']     = 'block';
+				$field['sub_fields'] = wonder_acf_fields_from_properties( $ref_props, $key );
 				return wonder_acf_apply_acf_passthrough( $field, $prop );
 
 			case 'link':
