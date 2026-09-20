@@ -60,3 +60,7 @@
 .wonderpress-editor-repeater-control .wonderpress-editor-repeater-row:last-of-type {
 	margin-bottom: 0;
 }
+
+.wonderpress-editor-partial-embed .wonderpress-inspector-field-group {
+	margin-bottom: 0;
+}

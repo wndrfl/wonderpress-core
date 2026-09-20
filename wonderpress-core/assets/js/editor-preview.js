@@ -468,16 +468,53 @@
 		}
 
 		if ( manifestType === 'partial' ) {
+			var embedProps = ( propDef && propDef.properties ) ? propDef.properties : [];
+			if ( ! embedProps.length ) {
+				fields.push(
+					el(
+						'p',
+						{
+							key: keyPrefix + '-partial-missing',
+							className: 'components-base-control__help',
+							style: { margin: '0 0 12px' },
+						},
+						'Partial embed schema is missing for this property.'
+					)
+				);
+				return fields;
+			}
 			fields.push(
-				el(
-					'p',
-					{
-						key: keyPrefix + '-partial',
-						className: 'components-base-control__help',
-						style: { margin: '0 0 12px' },
-					},
-					'Partial embed is not editable in the block inspector yet.'
-				)
+				inspectorFieldGroup( {
+					key: keyPrefix,
+					className: 'wonderpress-editor-partial-embed',
+					label: label,
+					help: help,
+					children: el( PartialEmbedControl, {
+						propDef: propDef,
+						value: value,
+						onChange: onChange,
+						blockAttributes: blockAttributes,
+						keyPrefix: keyPrefix,
+					} ),
+				} )
+			);
+			return fields;
+		}
+
+		if ( manifestType === 'repeater' ) {
+			fields.push(
+				inspectorFieldGroup( {
+					key: keyPrefix,
+					className: 'wonderpress-editor-repeater-control',
+					label: label,
+					help: help,
+					children: el( RepeaterControl, {
+						propDef: propDef,
+						value: value,
+						onChange: onChange,
+						blockAttributes: blockAttributes,
+					} ),
+				} )
 			);
 			return fields;
 		}
@@ -684,6 +721,40 @@
 		}
 
 		return fields;
+	}
+
+	function PartialEmbedControl( props ) {
+		var propDef         = props.propDef;
+		var value           = props.value;
+		var onChange        = props.onChange;
+		var blockAttributes = props.blockAttributes;
+		var keyPrefix       = props.keyPrefix || 'partial';
+		var subProps        = ( propDef && propDef.properties ) ? propDef.properties : [];
+		var row             = ( value && typeof value === 'object' && ! Array.isArray( value ) ) ? value : {};
+
+		function patch( subKey, subValue ) {
+			var next = Object.assign( {}, row );
+			next[ subKey ] = subValue;
+			onChange( next );
+		}
+
+		var rowFields = [];
+		subProps.forEach( function ( sub ) {
+			var subFields = renderPropertyInspectorFields( {
+				propDef: sub,
+				fieldKey: sub.name,
+				keyPrefix: keyPrefix + '-' + sub.name,
+				value: row[ sub.name ],
+				onChange: function ( subValue ) {
+					patch( sub.name, subValue );
+				},
+				whenContext: row,
+				blockAttributes: blockAttributes,
+			} );
+			rowFields = rowFields.concat( subFields );
+		} );
+
+		return el( Fragment, null, rowFields );
 	}
 
 	function RepeaterControl( props ) {

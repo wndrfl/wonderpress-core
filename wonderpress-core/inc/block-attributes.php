@@ -216,6 +216,52 @@ if ( ! function_exists( 'wonder_normalize_repeater_value' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wonder_normalize_partial_value' ) ) {
+	/**
+	 * Normalize a partial embed object from referenced manifest property types.
+	 *
+	 * @param mixed                $value    Raw block attribute object.
+	 * @param array<string, mixed> $prop_def Partial embed manifest property.
+	 * @return array<string, mixed>
+	 */
+	function wonder_normalize_partial_value( $value, array $prop_def ) {
+		if ( ! is_array( $value ) ) {
+			return array();
+		}
+
+		$ref_slug = ! empty( $prop_def['partial'] ) ? (string) $prop_def['partial'] : '';
+		if ( '' === $ref_slug || ! function_exists( 'wonder_acf_partial_manifest_properties' ) ) {
+			return array();
+		}
+
+		$ref_props = wonder_acf_partial_manifest_properties( $ref_slug );
+		if ( ! $ref_props ) {
+			return array();
+		}
+
+		$normalized = array();
+
+		foreach ( $ref_props as $sub ) {
+			if ( empty( $sub['name'] ) || empty( $sub['type'] ) ) {
+				continue;
+			}
+
+			$sub_key = (string) $sub['name'];
+			if ( ! array_key_exists( $sub_key, $value ) ) {
+				continue;
+			}
+
+			$normalized[ $sub_key ] = wonder_normalize_property_value(
+				(string) $sub['type'],
+				$value[ $sub_key ],
+				is_array( $sub ) ? $sub : array()
+			);
+		}
+
+		return $normalized;
+	}
+}
+
 if ( ! function_exists( 'wonder_normalize_property_value' ) ) {
 	/**
 	 * Normalize one manifest property value from block storage.
@@ -235,6 +281,8 @@ if ( ! function_exists( 'wonder_normalize_property_value' ) ) {
 				return wonder_normalize_post_object_value( $value );
 			case 'repeater':
 				return wonder_normalize_repeater_value( $value, $prop_def );
+			case 'partial':
+				return wonder_normalize_partial_value( $value, $prop_def );
 			default:
 				return $value;
 		}

@@ -92,7 +92,7 @@ if ( ! function_exists( 'wonder_block_editor_schema_entry_from_property' ) ) {
 	 * @param array<string, mixed> $prop Manifest property.
 	 * @return array<string, mixed>|null
 	 */
-	function wonder_block_editor_schema_entry_from_property( array $prop ) {
+	function wonder_block_editor_schema_entry_from_property( array $prop, array $visited_partial_slugs = array() ) {
 		if ( empty( $prop['name'] ) || empty( $prop['type'] ) ) {
 			return null;
 		}
@@ -137,13 +137,40 @@ if ( ! function_exists( 'wonder_block_editor_schema_entry_from_property' ) ) {
 		if ( 'repeater' === $prop['type'] && ! empty( $prop['properties'] ) && is_array( $prop['properties'] ) ) {
 			$sub_entries = array();
 			foreach ( $prop['properties'] as $sub ) {
-				$sub_entry = wonder_block_editor_schema_entry_from_property( $sub );
+				$sub_entry = wonder_block_editor_schema_entry_from_property( $sub, $visited_partial_slugs );
 				if ( $sub_entry ) {
 					$sub_entries[] = $sub_entry;
 				}
 			}
 			if ( $sub_entries ) {
 				$entry['properties'] = $sub_entries;
+			}
+		}
+
+		if ( 'partial' === $prop['type'] ) {
+			$ref_slug = ! empty( $prop['partial'] ) ? (string) $prop['partial'] : '';
+			if ( $ref_slug ) {
+				$entry['partial'] = $ref_slug;
+			}
+
+			if ( $ref_slug && ! in_array( $ref_slug, $visited_partial_slugs, true ) ) {
+				$next_visited   = array_merge( $visited_partial_slugs, array( $ref_slug ) );
+				$ref_properties = function_exists( 'wonder_acf_partial_manifest_properties' )
+					? wonder_acf_partial_manifest_properties( $ref_slug )
+					: array();
+
+				if ( $ref_properties ) {
+					$sub_entries = array();
+					foreach ( $ref_properties as $sub ) {
+						$sub_entry = wonder_block_editor_schema_entry_from_property( $sub, $next_visited );
+						if ( $sub_entry ) {
+							$sub_entries[] = $sub_entry;
+						}
+					}
+					if ( $sub_entries ) {
+						$entry['properties'] = $sub_entries;
+					}
+				}
 			}
 		}
 

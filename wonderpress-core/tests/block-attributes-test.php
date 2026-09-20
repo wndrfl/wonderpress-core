@@ -34,6 +34,24 @@ if ( ! function_exists( 'wp_get_upload_dir' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wonder_acf_partial_manifest_properties' ) ) {
+	function wonder_acf_partial_manifest_properties( $partial_slug ) {
+		if ( 'stub-embed' === $partial_slug ) {
+			return array(
+				array(
+					'name' => 'label',
+					'type' => 'string',
+				),
+				array(
+					'name' => 'photo',
+					'type' => 'image',
+				),
+			);
+		}
+		return array();
+	}
+}
+
 require dirname( __DIR__ ) . '/inc/block-attributes.php';
 
 $from_id = wonder_normalize_image_value( 42 );
@@ -94,5 +112,18 @@ assert( ' Hello ' === $repeater_norm[0]['title'] );
 assert( is_array( $repeater_norm[0]['photo'] ) );
 assert( 42 === $repeater_norm[0]['photo']['ID'] );
 assert( array() === wonder_normalize_repeater_value( 'not-array', $repeater_def ) );
+
+$partial_norm = wonder_normalize_partial_value(
+	array(
+		'label' => 'CTA',
+		'photo' => 42,
+	),
+	array(
+		'partial' => 'stub-embed',
+	)
+);
+assert( 'CTA' === $partial_norm['label'] );
+assert( is_array( $partial_norm['photo'] ) );
+assert( 42 === $partial_norm['photo']['ID'] );
 
 echo "block-attributes-test: OK\n";
