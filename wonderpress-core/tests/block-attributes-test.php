@@ -63,4 +63,36 @@ assert( 42 === wonder_normalize_post_object_value( 42 ) );
 assert( 7 === wonder_normalize_post_object_value( array( 'ID' => 7 ) ) );
 assert( null === wonder_normalize_post_object_value( null ) );
 
+$repeater_def = array(
+	'properties' => array(
+		array(
+			'name' => 'title',
+			'type' => 'string',
+		),
+		array(
+			'name' => 'photo',
+			'type' => 'image',
+		),
+	),
+);
+
+$repeater_norm = wonder_normalize_repeater_value(
+	array(
+		array(
+			'title' => ' Hello ',
+			'photo' => 42,
+		),
+		array(
+			'title' => '',
+			'photo' => null,
+		),
+	),
+	$repeater_def
+);
+assert( 2 === count( $repeater_norm ) );
+assert( ' Hello ' === $repeater_norm[0]['title'] );
+assert( is_array( $repeater_norm[0]['photo'] ) );
+assert( 42 === $repeater_norm[0]['photo']['ID'] );
+assert( array() === wonder_normalize_repeater_value( 'not-array', $repeater_def ) );
+
 echo "block-attributes-test: OK\n";

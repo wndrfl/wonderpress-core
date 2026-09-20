@@ -84,3 +84,69 @@ if ( ! function_exists( 'wonder_manifest_property_string_rows' ) ) {
 		return $rows > 0 ? $rows : null;
 	}
 }
+
+if ( ! function_exists( 'wonder_block_editor_schema_entry_from_property' ) ) {
+	/**
+	 * One block editor schema property entry from a manifest property.
+	 *
+	 * @param array<string, mixed> $prop Manifest property.
+	 * @return array<string, mixed>|null
+	 */
+	function wonder_block_editor_schema_entry_from_property( array $prop ) {
+		if ( empty( $prop['name'] ) || empty( $prop['type'] ) ) {
+			return null;
+		}
+
+		$entry = array(
+			'name' => (string) $prop['name'],
+			'type' => (string) $prop['type'],
+		);
+
+		if ( ! empty( $prop['label'] ) && is_string( $prop['label'] ) ) {
+			$entry['label'] = $prop['label'];
+		}
+
+		if ( isset( $prop['description'] ) ) {
+			$entry['description'] = (string) $prop['description'];
+		}
+
+		if ( ! empty( $prop['required'] ) ) {
+			$entry['required'] = true;
+		}
+
+		if ( ! empty( $prop['choices'] ) && is_array( $prop['choices'] ) ) {
+			$entry['choices'] = $prop['choices'];
+		}
+
+		if ( ! empty( $prop['when'] ) && is_array( $prop['when'] ) ) {
+			$entry['when'] = $prop['when'];
+		}
+
+		if ( ! empty( $prop['post_type'] ) ) {
+			$entry['post_type'] = $prop['post_type'];
+		}
+
+		if ( ! empty( $prop['format'] ) && is_string( $prop['format'] ) ) {
+			$entry['format'] = $prop['format'];
+		}
+
+		if ( ! empty( $prop['rows'] ) ) {
+			$entry['rows'] = (int) $prop['rows'];
+		}
+
+		if ( 'repeater' === $prop['type'] && ! empty( $prop['properties'] ) && is_array( $prop['properties'] ) ) {
+			$sub_entries = array();
+			foreach ( $prop['properties'] as $sub ) {
+				$sub_entry = wonder_block_editor_schema_entry_from_property( $sub );
+				if ( $sub_entry ) {
+					$sub_entries[] = $sub_entry;
+				}
+			}
+			if ( $sub_entries ) {
+				$entry['properties'] = $sub_entries;
+			}
+		}
+
+		return $entry;
+	}
+}

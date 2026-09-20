@@ -160,6 +160,62 @@ if ( ! function_exists( 'wonder_normalize_post_object_value' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wonder_normalize_repeater_value' ) ) {
+	/**
+	 * Normalize repeater rows; nested values follow sub-property types.
+	 *
+	 * @param mixed                $value    Raw block attribute (array of rows).
+	 * @param array<string, mixed> $prop_def Repeater manifest property.
+	 * @return array<int, array<string, mixed>>
+	 */
+	function wonder_normalize_repeater_value( $value, array $prop_def ) {
+		if ( ! is_array( $value ) ) {
+			return array();
+		}
+
+		$sub_props = ! empty( $prop_def['properties'] ) && is_array( $prop_def['properties'] )
+			? $prop_def['properties']
+			: array();
+
+		if ( ! $sub_props ) {
+			return array();
+		}
+
+		$normalized = array();
+
+		foreach ( $value as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+
+			$normalized_row = array();
+
+			foreach ( $sub_props as $sub ) {
+				if ( empty( $sub['name'] ) || empty( $sub['type'] ) ) {
+					continue;
+				}
+
+				$sub_key = (string) $sub['name'];
+				if ( ! array_key_exists( $sub_key, $row ) ) {
+					continue;
+				}
+
+				$normalized_row[ $sub_key ] = wonder_normalize_property_value(
+					(string) $sub['type'],
+					$row[ $sub_key ],
+					is_array( $sub ) ? $sub : array()
+				);
+			}
+
+			if ( $normalized_row ) {
+				$normalized[] = $normalized_row;
+			}
+		}
+
+		return $normalized;
+	}
+}
+
 if ( ! function_exists( 'wonder_normalize_property_value' ) ) {
 	/**
 	 * Normalize one manifest property value from block storage.
@@ -170,8 +226,6 @@ if ( ! function_exists( 'wonder_normalize_property_value' ) ) {
 	 * @return mixed
 	 */
 	function wonder_normalize_property_value( $type, $value, array $prop_def = array() ) {
-		unset( $prop_def );
-
 		switch ( $type ) {
 			case 'image':
 				return wonder_normalize_image_value( $value );
@@ -179,6 +233,8 @@ if ( ! function_exists( 'wonder_normalize_property_value' ) ) {
 				return wonder_normalize_link_value( $value );
 			case 'post_object':
 				return wonder_normalize_post_object_value( $value );
+			case 'repeater':
+				return wonder_normalize_repeater_value( $value, $prop_def );
 			default:
 				return $value;
 		}

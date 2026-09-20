@@ -51,3 +51,12 @@
 	padding-bottom: 4px;
 	padding-top: 8px;
 }
+
+.wonderpress-editor-repeater-control .wonderpress-editor-repeater-row {
+	background: #fafafa;
+	margin-bottom: 8px;
+}
+
+.wonderpress-editor-repeater-control .wonderpress-editor-repeater-row:last-of-type {
+	margin-bottom: 0;
+}

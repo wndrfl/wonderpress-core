@@ -396,6 +396,9 @@
 		if ( value === undefined || value === null || value === '' || value === false ) {
 			return true;
 		}
+		if ( Array.isArray( value ) ) {
+			return value.length === 0;
+		}
 		if ( typeof value === 'object' && ! Array.isArray( value ) ) {
 			if ( imageAttachmentId( value ) ) {
 				return false;
@@ -430,6 +433,348 @@
 		return declaredAttributes( blockType );
 	}
 
+	function defaultValueForSubType( type ) {
+		if ( type === 'boolean' ) {
+			return false;
+		}
+		if ( type === 'link' ) {
+			return linkValueFromAttribute( null );
+		}
+		if ( type === 'image' ) {
+			return null;
+		}
+		return '';
+	}
+
+	/**
+	 * Inspector fields for one manifest property (flat or nested in a repeater row).
+	 */
+	function renderPropertyInspectorFields( ctx ) {
+		var fields         = [];
+		var propDef        = ctx.propDef;
+		var fieldKey       = ctx.fieldKey;
+		var keyPrefix      = ctx.keyPrefix || fieldKey;
+		var value          = ctx.value;
+		var onChange       = ctx.onChange;
+		var whenContext    = ctx.whenContext;
+		var blockAttributes = ctx.blockAttributes || {};
+		var attrType       = blockAttributes[ fieldKey ] ? blockAttributes[ fieldKey ].type : 'string';
+		var manifestType   = propDef && propDef.type ? propDef.type : null;
+		var label          = ( propDef && propDef.label ) ? propDef.label : humanize( fieldKey );
+		var help           = ( propDef && propDef.description ) ? propDef.description : undefined;
+
+		if ( ! whenVisible( propDef, whenContext ) ) {
+			return fields;
+		}
+
+		if ( manifestType === 'partial' ) {
+			fields.push(
+				el(
+					'p',
+					{
+						key: keyPrefix + '-partial',
+						className: 'components-base-control__help',
+						style: { margin: '0 0 12px' },
+					},
+					'Partial embed is not editable in the block inspector yet.'
+				)
+			);
+			return fields;
+		}
+
+		if ( manifestType === 'boolean' || ( ! manifestType && attrType === 'boolean' ) ) {
+			fields.push( el( ToggleControl, {
+				key: keyPrefix,
+				label: label,
+				help: help,
+				checked: !! value,
+				onChange: onChange,
+				__nextHasNoMarginBottom: true,
+			} ) );
+			return fields;
+		}
+
+		if ( manifestType === 'select' ) {
+			var options = [ { label: '\u2014', value: '' } ];
+			if ( propDef.choices && typeof propDef.choices === 'object' ) {
+				Object.keys( propDef.choices ).forEach( function ( choiceKey ) {
+					options.push( {
+						label: String( propDef.choices[ choiceKey ] ),
+						value: choiceKey,
+					} );
+				} );
+			} else if ( blockAttributes[ fieldKey ] && blockAttributes[ fieldKey ].enum ) {
+				blockAttributes[ fieldKey ].enum.forEach( function ( choiceKey ) {
+					options.push( {
+						label: humanize( choiceKey ),
+						value: choiceKey,
+					} );
+				} );
+			}
+			fields.push( el( SelectControl, {
+				key: keyPrefix,
+				label: label,
+				help: help,
+				value: value || '',
+				options: options,
+				onChange: onChange,
+				__nextHasNoMarginBottom: true,
+			} ) );
+			return fields;
+		}
+
+		if ( manifestType === 'email' ) {
+			fields.push( el( TextControl, {
+				key: keyPrefix,
+				label: label,
+				help: help,
+				type: 'email',
+				value: value || '',
+				onChange: onChange,
+				__nextHasNoMarginBottom: true,
+			} ) );
+			return fields;
+		}
+
+		if ( manifestType === 'string' || ( ! manifestType && attrType === 'string' ) ) {
+			var Control = isTextareaField( propDef, fieldKey ) ? TextareaControl : TextControl;
+			fields.push( el( Control, {
+				key: keyPrefix,
+				label: label,
+				help: help,
+				value: value || '',
+				onChange: onChange,
+				__nextHasNoMarginBottom: true,
+			} ) );
+			return fields;
+		}
+
+		if ( manifestType === 'image' ) {
+			var attachmentId = imageAttachmentId( value );
+			var previewUrl   = imagePreviewUrl( value );
+			fields.push(
+				inspectorFieldGroup( {
+					key: keyPrefix,
+					className: 'wonderpress-editor-image-control',
+					label: label,
+					help: help,
+					children: el(
+						MediaUploadCheck,
+						null,
+						el( MediaUpload, {
+							onSelect: function ( media ) {
+								onChange( imageValueFromMedia( media ) );
+							},
+							allowedTypes: [ 'image' ],
+							value: attachmentId || undefined,
+							render: function ( renderProps ) {
+								return el(
+									Fragment,
+									null,
+									previewUrl
+										? el( 'img', {
+											src: previewUrl,
+											alt: ( value && value.alt ) ? value.alt : '',
+											className: 'wonderpress-editor-image-control__preview',
+										} )
+										: null,
+									el(
+										'div',
+										{ className: 'wonderpress-editor-image-control__actions' },
+										el( Button, {
+											variant: attachmentId ? 'secondary' : 'primary',
+											onClick: renderProps.open,
+										}, attachmentId ? 'Replace image' : 'Select image' ),
+										attachmentId
+											? el( Button, {
+												variant: 'link',
+												isDestructive: true,
+												onClick: function () {
+													onChange( null );
+												},
+											}, 'Remove' )
+											: null
+									)
+								);
+							},
+						} )
+					),
+				} )
+			);
+			return fields;
+		}
+
+		if ( manifestType === 'link' ) {
+			var linkVal = linkValueFromAttribute( value );
+			function patchLink( patch ) {
+				var next = linkValueFromAttribute( value );
+				Object.keys( patch ).forEach( function ( patchKey ) {
+					next[ patchKey ] = patch[ patchKey ];
+				} );
+				onChange( next );
+			}
+			fields.push(
+				inspectorFieldGroup( {
+					key: keyPrefix,
+					className: 'wonderpress-editor-link-control',
+					label: label,
+					help: help,
+					children: el(
+						Fragment,
+						null,
+						el( TextControl, {
+							label: 'Text',
+							value: linkVal.content,
+							onChange: function ( next ) {
+								patchLink( { content: next } );
+							},
+							__nextHasNoMarginBottom: true,
+						} ),
+						el( TextControl, {
+							label: 'URL',
+							type: 'url',
+							value: linkVal.url,
+							onChange: function ( next ) {
+								patchLink( { url: next } );
+							},
+							__nextHasNoMarginBottom: true,
+						} ),
+						el(
+							'div',
+							{ className: 'wonderpress-editor-link-control__advanced' },
+							el( TextControl, {
+								label: 'Title attribute',
+								help: 'Optional. Shown on hover and for assistive tech.',
+								value: linkVal.title,
+								onChange: function ( next ) {
+									patchLink( { title: next } );
+								},
+								__nextHasNoMarginBottom: true,
+							} ),
+							el( ToggleControl, {
+								label: 'Open in new tab',
+								checked: linkVal.open_in_new_tab,
+								onChange: function ( next ) {
+									patchLink( { open_in_new_tab: next } );
+								},
+								__nextHasNoMarginBottom: true,
+							} )
+						)
+					),
+				} )
+			);
+			return fields;
+		}
+
+		if ( manifestType === 'post_object' ) {
+			fields.push(
+				inspectorFieldGroup( {
+					key: keyPrefix,
+					className: 'wonderpress-editor-post-object-control',
+					label: label,
+					help: help,
+					children: el( PostObjectControl, {
+						propDef: propDef,
+						value: value,
+						onChange: onChange,
+					} ),
+				} )
+			);
+			return fields;
+		}
+
+		return fields;
+	}
+
+	function RepeaterControl( props ) {
+		var propDef         = props.propDef;
+		var value           = props.value;
+		var onChange        = props.onChange;
+		var blockAttributes = props.blockAttributes;
+		var subProps        = ( propDef && propDef.properties ) ? propDef.properties : [];
+		var rows            = Array.isArray( value ) ? value : [];
+
+		function setRows( next ) {
+			onChange( next );
+		}
+
+		function updateRow( index, subKey, subValue ) {
+			var next = rows.slice();
+			var row  = Object.assign( {}, next[ index ] || {} );
+			row[ subKey ] = subValue;
+			next[ index ] = row;
+			setRows( next );
+		}
+
+		function addRow() {
+			var row = {};
+			subProps.forEach( function ( sub ) {
+				row[ sub.name ] = defaultValueForSubType( sub.type );
+			} );
+			setRows( rows.concat( [ row ] ) );
+		}
+
+		function removeRow( index ) {
+			setRows( rows.filter( function ( _, rowIndex ) {
+				return rowIndex !== index;
+			} ) );
+		}
+
+		return el(
+			Fragment,
+			null,
+			rows.map( function ( row, rowIndex ) {
+				var rowFields = [];
+				subProps.forEach( function ( sub ) {
+					var subFields = renderPropertyInspectorFields( {
+						propDef: sub,
+						fieldKey: sub.name,
+						keyPrefix: 'row-' + rowIndex + '-' + sub.name,
+						value: row ? row[ sub.name ] : undefined,
+						onChange: function ( subValue ) {
+							updateRow( rowIndex, sub.name, subValue );
+						},
+						whenContext: row || {},
+						blockAttributes: blockAttributes,
+					} );
+					rowFields = rowFields.concat( subFields );
+				} );
+
+				return inspectorFieldGroup( {
+					key: 'repeater-row-' + rowIndex,
+					className: 'wonderpress-editor-repeater-row',
+					label: 'Row ' + ( rowIndex + 1 ),
+					children: el(
+						Fragment,
+						null,
+						rowFields,
+						el(
+							Button,
+							{
+								variant: 'link',
+								isDestructive: true,
+								onClick: function () {
+									removeRow( rowIndex );
+								},
+								style: { marginTop: '4px' },
+							},
+							'Remove row'
+						)
+					),
+				} );
+			} ),
+			el(
+				Button,
+				{
+					variant: 'secondary',
+					onClick: addRow,
+					style: { marginTop: rows.length ? '8px' : '0' },
+				},
+				'Add row'
+			)
+		);
+	}
+
 	function controlsFor( props ) {
 		var blockType  = wp.blocks.getBlockType( props.name );
 		var attributes = ( blockType && blockType.attributes ) || {};
@@ -438,7 +783,6 @@
 		return keys.reduce( function ( fields, key ) {
 			var propDef      = propertyDef( props.name, key );
 			var manifestType = propDef && propDef.type ? propDef.type : null;
-			var attrType     = attributes[ key ] ? attributes[ key].type : 'string';
 			var label        = ( propDef && propDef.label ) ? propDef.label : humanize( key );
 			var help         = ( propDef && propDef.description ) ? propDef.description : undefined;
 			var value        = props.attributes[ key ];
@@ -453,220 +797,35 @@
 				props.setAttributes( update );
 			}
 
-			if ( manifestType === 'boolean' || ( ! manifestType && attrType === 'boolean' ) ) {
-				fields.push( el( ToggleControl, {
-					key: key,
-					label: label,
-					help: help,
-					checked: !! value,
-					onChange: set,
-					__nextHasNoMarginBottom: true,
-				} ) );
-				return fields;
-			}
-
-			if ( manifestType === 'select' ) {
-				var options = [ { label: '\u2014', value: '' } ];
-				if ( propDef.choices && typeof propDef.choices === 'object' ) {
-					Object.keys( propDef.choices ).forEach( function ( choiceKey ) {
-						options.push( {
-							label: String( propDef.choices[ choiceKey ] ),
-							value: choiceKey,
-						} );
-					} );
-				} else if ( attributes[ key ] && attributes[ key ].enum ) {
-					attributes[ key ].enum.forEach( function ( choiceKey ) {
-						options.push( {
-							label: humanize( choiceKey ),
-							value: choiceKey,
-						} );
-					} );
-				}
-				fields.push( el( SelectControl, {
-					key: key,
-					label: label,
-					help: help,
-					value: value || '',
-					options: options,
-					onChange: set,
-					__nextHasNoMarginBottom: true,
-				} ) );
-				return fields;
-			}
-
-			if ( manifestType === 'email' ) {
-				fields.push( el( TextControl, {
-					key: key,
-					label: label,
-					help: help,
-					type: 'email',
-					value: value || '',
-					onChange: set,
-					__nextHasNoMarginBottom: true,
-				} ) );
-				return fields;
-			}
-
-			if ( manifestType === 'string' || ( ! manifestType && attrType === 'string' ) ) {
-				var Control = isTextareaField( propDef, key ) ? TextareaControl : TextControl;
-				fields.push( el( Control, {
-					key: key,
-					label: label,
-					help: help,
-					value: value || '',
-					onChange: set,
-					__nextHasNoMarginBottom: true,
-				} ) );
-				return fields;
-			}
-
-			if ( manifestType === 'image' ) {
-				var attachmentId = imageAttachmentId( value );
-				var previewUrl   = imagePreviewUrl( value );
-
+			if ( manifestType === 'repeater' ) {
 				fields.push(
 					inspectorFieldGroup( {
 						key: key,
-						className: 'wonderpress-editor-image-control',
+						className: 'wonderpress-editor-repeater-control',
 						label: label,
 						help: help,
-						children: el(
-							MediaUploadCheck,
-							null,
-							el( MediaUpload, {
-								onSelect: function ( media ) {
-									set( imageValueFromMedia( media ) );
-								},
-								allowedTypes: [ 'image' ],
-								value: attachmentId || undefined,
-								render: function ( renderProps ) {
-									return el(
-										Fragment,
-										null,
-										previewUrl
-											? el( 'img', {
-												src: previewUrl,
-												alt: ( value && value.alt ) ? value.alt : '',
-												className: 'wonderpress-editor-image-control__preview',
-											} )
-											: null,
-										el(
-											'div',
-											{ className: 'wonderpress-editor-image-control__actions' },
-											el(
-												Button,
-												{
-													variant: attachmentId ? 'secondary' : 'primary',
-													onClick: renderProps.open,
-												},
-												attachmentId ? 'Replace image' : 'Select image'
-											),
-											attachmentId
-												? el(
-													Button,
-													{
-														variant: 'link',
-														isDestructive: true,
-														onClick: function () {
-															set( null );
-														},
-													},
-													'Remove'
-												)
-												: null
-										)
-									);
-								},
-							} )
-						),
-					} )
-				);
-				return fields;
-			}
-
-			if ( manifestType === 'link' ) {
-				var linkVal = linkValueFromAttribute( value );
-
-				function patchLink( patch ) {
-					var next = linkValueFromAttribute( value );
-					Object.keys( patch ).forEach( function ( patchKey ) {
-						next[ patchKey ] = patch[ patchKey ];
-					} );
-					set( next );
-				}
-
-				fields.push(
-					inspectorFieldGroup( {
-						key: key,
-						className: 'wonderpress-editor-link-control',
-						label: label,
-						help: help,
-						children: el(
-							Fragment,
-							null,
-							el( TextControl, {
-								label: 'Text',
-								value: linkVal.content,
-								onChange: function ( next ) {
-									patchLink( { content: next } );
-								},
-								__nextHasNoMarginBottom: true,
-							} ),
-							el( TextControl, {
-								label: 'URL',
-								type: 'url',
-								value: linkVal.url,
-								onChange: function ( next ) {
-									patchLink( { url: next } );
-								},
-								__nextHasNoMarginBottom: true,
-							} ),
-							el(
-								'div',
-								{ className: 'wonderpress-editor-link-control__advanced' },
-								el( TextControl, {
-									label: 'Title attribute',
-									help: 'Optional. Shown on hover and for assistive tech.',
-									value: linkVal.title,
-									onChange: function ( next ) {
-										patchLink( { title: next } );
-									},
-									__nextHasNoMarginBottom: true,
-								} ),
-								el( ToggleControl, {
-									label: 'Open in new tab',
-									checked: linkVal.open_in_new_tab,
-									onChange: function ( next ) {
-										patchLink( { open_in_new_tab: next } );
-									},
-									__nextHasNoMarginBottom: true,
-								} )
-							)
-						),
-					} )
-				);
-				return fields;
-			}
-
-			if ( manifestType === 'post_object' ) {
-				fields.push(
-					inspectorFieldGroup( {
-						key: key,
-						className: 'wonderpress-editor-post-object-control',
-						label: label,
-						help: help,
-						children: el( PostObjectControl, {
+						children: el( RepeaterControl, {
 							propDef: propDef,
 							value: value,
 							onChange: set,
+							blockAttributes: attributes,
 						} ),
 					} )
 				);
 				return fields;
 			}
 
-			// Tier B types (object/array attributes) — custom edit component required.
-			return fields;
+			return fields.concat(
+				renderPropertyInspectorFields( {
+					propDef: propDef,
+					fieldKey: key,
+					keyPrefix: key,
+					value: value,
+					onChange: set,
+					whenContext: props.attributes,
+					blockAttributes: attributes,
+				} )
+			);
 		}, [] );
 	}
 

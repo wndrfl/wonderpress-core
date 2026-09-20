@@ -337,48 +337,10 @@ if ( ! function_exists( 'wonder_block_editor_schemas' ) ) {
 			$properties = array();
 
 			foreach ( $manifest['properties'] as $prop ) {
-				if ( empty( $prop['name'] ) || empty( $prop['type'] ) ) {
-					continue;
+				$entry = wonder_block_editor_schema_entry_from_property( $prop );
+				if ( $entry ) {
+					$properties[] = $entry;
 				}
-
-				$entry = array(
-					'name' => (string) $prop['name'],
-					'type' => (string) $prop['type'],
-				);
-
-				if ( ! empty( $prop['label'] ) && is_string( $prop['label'] ) ) {
-					$entry['label'] = $prop['label'];
-				}
-
-				if ( isset( $prop['description'] ) ) {
-					$entry['description'] = (string) $prop['description'];
-				}
-
-				if ( ! empty( $prop['required'] ) ) {
-					$entry['required'] = true;
-				}
-
-				if ( ! empty( $prop['choices'] ) && is_array( $prop['choices'] ) ) {
-					$entry['choices'] = $prop['choices'];
-				}
-
-				if ( ! empty( $prop['when'] ) && is_array( $prop['when'] ) ) {
-					$entry['when'] = $prop['when'];
-				}
-
-				if ( ! empty( $prop['post_type'] ) ) {
-					$entry['post_type'] = $prop['post_type'];
-				}
-
-				if ( ! empty( $prop['format'] ) && is_string( $prop['format'] ) ) {
-					$entry['format'] = $prop['format'];
-				}
-
-				if ( ! empty( $prop['rows'] ) ) {
-					$entry['rows'] = (int) $prop['rows'];
-				}
-
-				$properties[] = $entry;
 			}
 
 			if ( $properties ) {
