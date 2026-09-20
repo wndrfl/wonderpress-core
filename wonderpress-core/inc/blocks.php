@@ -239,7 +239,12 @@ if ( ! function_exists( 'wonder_template_locks' ) ) {
 	 * @return array<string, string|bool>
 	 */
 	function wonder_template_locks( $post = null ) {
-		return (array) apply_filters( 'wonderpress_template_locks', array(), $post );
+		$from_manifests = function_exists( 'wonder_template_locks_from_manifests' )
+			? wonder_template_locks_from_manifests()
+			: array();
+		$custom         = (array) apply_filters( 'wonderpress_template_locks', array(), $post );
+
+		return array_merge( $from_manifests, $custom );
 	}
 }
 
@@ -272,8 +277,9 @@ if ( ! function_exists( 'wonder_page_lock' ) ) {
 			return $settings;
 		}
 
-		$slug  = get_page_template_slug( $post );
-		$slug  = ( is_string( $slug ) && '' !== $slug ) ? $slug : 'default';
+		$slug  = function_exists( 'wonder_page_template_slug' )
+			? wonder_page_template_slug( $post )
+			: 'default';
 		$locks = wonder_template_locks( $post );
 
 		// Absent is not the same as false. A template nobody mapped is left
@@ -307,6 +313,47 @@ if ( ! function_exists( 'wonder_page_lock' ) ) {
 	add_filter( 'block_editor_settings_all', 'wonder_page_lock', 10, 2 );
 }
 
+if ( ! function_exists( 'wonder_block_editor_schemas' ) ) {
+	/**
+	 * Manifest property definitions for blocks, keyed by block name.
+	 *
+	 * The block.json attribute types alone cannot express manifest types (select vs
+	 * string, email, textarea hints, when rules). The editor reads this map.
+	 *
+	 * @return array<string, array{properties: array<int, array<string, mixed>>}>
+	 */
+	function wonder_block_editor_schemas() {
+		if ( ! function_exists( 'wonder_load_theme_manifests' ) ) {
+			return array();
+		}
+
+		$schemas = array();
+
+		foreach ( wonder_load_theme_manifests() as $manifest ) {
+			if ( empty( $manifest['block'] ) || empty( $manifest['properties'] ) || ! is_array( $manifest['properties'] ) ) {
+				continue;
+			}
+
+			$properties = array();
+
+			foreach ( $manifest['properties'] as $prop ) {
+				$entry = wonder_block_editor_schema_entry_from_property( $prop );
+				if ( $entry ) {
+					$properties[] = $entry;
+				}
+			}
+
+			if ( $properties ) {
+				$schemas[ (string) $manifest['block'] ] = array(
+					'properties' => $properties,
+				);
+			}
+		}
+
+		return $schemas;
+	}
+}
+
 if ( ! function_exists( 'wonder_enqueue_block_editor_preview' ) ) {
 	/**
 	 * Register the theme's blocks in the editor, and preview them there.
@@ -334,6 +381,9 @@ if ( ! function_exists( 'wonder_enqueue_block_editor_preview' ) ) {
 		$relative_path = 'assets/js/editor-preview.js';
 		$absolute_path = WONDERPRESS_CORE_PATH . $relative_path;
 
+		$style_relative = 'assets/css/editor-preview.css';
+		$style_absolute = WONDERPRESS_CORE_PATH . $style_relative;
+
 		// wonder_core_url() rather than plugins_url(): this package may be
 		// installed as an mu-plugin or as a theme's Composer dependency, and
 		// plugins_url() resolves against WP_PLUGIN_DIR either way.
@@ -343,10 +393,30 @@ if ( ! function_exists( 'wonder_enqueue_block_editor_preview' ) ) {
 			return;
 		}
 
+		$style_src = wonder_core_url( $style_relative );
+		if ( $style_src && file_exists( $style_absolute ) ) {
+			wp_enqueue_style(
+				'wonderpress-editor-preview',
+				$style_src,
+				array( 'wp-components' ),
+				filemtime( $style_absolute )
+			);
+		}
+
 		wp_enqueue_script(
 			'wonderpress-editor-preview',
 			$src,
-			array( 'wp-blocks', 'wp-element', 'wp-block-editor', 'wp-components', 'wp-server-side-render' ),
+			array(
+				'wp-blocks',
+				'wp-element',
+				'wp-block-editor',
+				'wp-components',
+				'wp-server-side-render',
+				'wp-i18n',
+				'wp-api-fetch',
+				'media-upload',
+				'wp-media-utils',
+			),
 			filemtime( $absolute_path ),
 			true
 		);
@@ -358,6 +428,15 @@ if ( ! function_exists( 'wonder_enqueue_block_editor_preview' ) ) {
 			'window.wonderpressEditorBlocks = ' . wp_json_encode( array_keys( $blocks ) ) . ';',
 			'before'
 		);
+
+		$schemas = wonder_block_editor_schemas();
+		if ( $schemas ) {
+			wp_add_inline_script(
+				'wonderpress-editor-preview',
+				'window.wonderpressBlockSchemas = ' . wp_json_encode( $schemas ) . ';',
+				'before'
+			);
+		}
 	}
 
 	add_action( 'enqueue_block_editor_assets', 'wonder_enqueue_block_editor_preview' );

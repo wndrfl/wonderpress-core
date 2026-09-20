@@ -1,0 +1,66 @@
+/**
+ * Block inspector styles for wonderpress-editor-preview.js
+ */
+
+.wonderpress-inspector-field-group {
+	border: 1px solid #e0e0e0;
+	border-radius: 2px;
+	box-sizing: border-box;
+	margin: 0 0 12px;
+	min-width: 0;
+	padding: 12px;
+}
+
+.wonderpress-inspector-field-group__legend {
+	display: block;
+	margin: 0 0 8px;
+	padding: 0;
+	width: 100%;
+}
+
+.wonderpress-inspector-field-group__help {
+	clear: both;
+	margin: 0 0 12px;
+}
+
+.wonderpress-inspector-field-group__inner {
+	display: flow-root;
+}
+
+.wonderpress-inspector-field-group__inner > .components-base-control:last-child,
+.wonderpress-inspector-field-group__inner > .wonderpress-editor-link-control__advanced:last-child .components-base-control:last-child {
+	margin-bottom: 0;
+}
+
+.wonderpress-editor-image-control__preview {
+	display: block;
+	height: auto;
+	margin-bottom: 8px;
+	max-width: 100%;
+}
+
+.wonderpress-editor-image-control__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.wonderpress-editor-link-control__advanced {
+	border-top: 1px solid #f0f0f0;
+	margin-top: 4px;
+	padding-bottom: 4px;
+	padding-top: 8px;
+}
+
+.wonderpress-editor-repeater-control .wonderpress-editor-repeater-row {
+	background: #fafafa;
+	margin-bottom: 8px;
+}
+
+.wonderpress-editor-repeater-control .wonderpress-editor-repeater-row:last-of-type {
+	margin-bottom: 0;
+}
+
+.wonderpress-editor-partial-embed .wonderpress-inspector-field-group {
+	margin-bottom: 0;
+}

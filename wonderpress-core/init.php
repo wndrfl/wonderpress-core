@@ -38,7 +38,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * A local first, because the guard below has to compare it against whatever
  * copy may already have loaded before deciding whether to say anything.
  */
-$wonderpress_core_this_version = '2.0.0';
+$wonderpress_core_this_version = '2.2.0';
 
 /**
  * Stand down when another copy of the package has already booted.
@@ -206,6 +206,18 @@ if ( ! function_exists( 'wonder_require_all' ) ) {
 }
 
 /**
- * Import PHP files from ./inc/ directory
+ * Import PHP files from ./inc/ directory.
+ *
+ * Template manifests load before ACF so composition helpers exist when field
+ * groups are built (glob order would load acf.php first).
  */
-wonder_require_all( __DIR__ . DIRECTORY_SEPARATOR . 'inc' );
+$wonderpress_core_inc = __DIR__ . DIRECTORY_SEPARATOR . 'inc';
+require_once $wonderpress_core_inc . DIRECTORY_SEPARATOR . 'template-manifests.php';
+require_once $wonderpress_core_inc . DIRECTORY_SEPARATOR . 'manifest-property.php';
+foreach ( glob( $wonderpress_core_inc . DIRECTORY_SEPARATOR . '*.php' ) as $wonderpress_core_inc_file ) {
+	$wonderpress_core_inc_basename = basename( $wonderpress_core_inc_file );
+	if ( 'template-manifests.php' === $wonderpress_core_inc_basename || 'manifest-property.php' === $wonderpress_core_inc_basename ) {
+		continue;
+	}
+	require_once $wonderpress_core_inc_file;
+}
