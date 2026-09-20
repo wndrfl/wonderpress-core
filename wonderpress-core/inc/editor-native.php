@@ -67,7 +67,7 @@ if ( ! function_exists( 'wonder_admin_get_editing_post' ) ) {
 		if ( isset( $_GET['post'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			$post_id = (int) $_GET['post'];
 		} elseif ( isset( $_POST['post_ID'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
-			$post_id = (int) $_POST['post_ID'];
+			$post_id = (int) $_POST['post_ID']; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		}
 
 		if ( ! $post_id ) {

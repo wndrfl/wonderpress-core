@@ -19,7 +19,11 @@ if ( ! function_exists( 'wp_get_attachment_url' ) ) {
 }
 if ( ! function_exists( 'wp_get_attachment_metadata' ) ) {
 	function wp_get_attachment_metadata( $id ) {
-		return (int) $id === 42 ? array( 'width' => 800, 'height' => 600, 'file' => '2026/04/image.jpg' ) : false;
+		return (int) $id === 42 ? array(
+			'width'  => 800,
+			'height' => 600,
+			'file'   => '2026/04/image.jpg',
+		) : false;
 	}
 }
 if ( ! function_exists( 'get_post_meta' ) ) {
@@ -75,7 +79,15 @@ assert( is_array( $from_link ) );
 assert( 'Read more' === $from_link['content'] );
 assert( true === $from_link['open_in_new_tab'] );
 
-assert( null === wonder_normalize_link_value( array( 'content' => '', 'url' => '', 'title' => '' ) ) );
+assert(
+	null === wonder_normalize_link_value(
+		array(
+			'content' => '',
+			'url'     => '',
+			'title'   => '',
+		)
+	)
+);
 
 assert( 42 === wonder_normalize_post_object_value( 42 ) );
 assert( 7 === wonder_normalize_post_object_value( array( 'ID' => 7 ) ) );

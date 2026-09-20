@@ -317,7 +317,7 @@ if ( ! function_exists( 'wonder_block_editor_schemas' ) ) {
 	/**
 	 * Manifest property definitions for blocks, keyed by block name.
 	 *
-	 * block.json attribute types alone cannot express manifest types (select vs
+	 * The block.json attribute types alone cannot express manifest types (select vs
 	 * string, email, textarea hints, when rules). The editor reads this map.
 	 *
 	 * @return array<string, array{properties: array<int, array<string, mixed>>}>

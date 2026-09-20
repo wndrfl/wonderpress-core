@@ -293,7 +293,7 @@ if ( ! function_exists( 'wonder_acf_build_field_from_property' ) ) {
 
 		switch ( $type ) {
 			case 'string':
-				$use_textarea = function_exists( 'wonder_manifest_property_string_is_textarea' )
+				$use_textarea  = function_exists( 'wonder_manifest_property_string_is_textarea' )
 					? wonder_manifest_property_string_is_textarea( $prop )
 					: wonder_acf_is_textarea_name( $name );
 				$field['type'] = $use_textarea ? 'textarea' : 'text';
@@ -339,9 +339,9 @@ if ( ! function_exists( 'wonder_acf_build_field_from_property' ) ) {
 				return wonder_acf_apply_acf_passthrough( $field, $prop );
 
 			case 'post_object':
-				$field['type']       = 'post_object';
-				$field['post_type']  = wonder_manifest_property_post_types( $prop );
-				$field               = wonder_acf_apply_acf_passthrough( $field, $prop );
+				$field['type']      = 'post_object';
+				$field['post_type'] = wonder_manifest_property_post_types( $prop );
+				$field              = wonder_acf_apply_acf_passthrough( $field, $prop );
 				if ( empty( $field['return_format'] ) ) {
 					$field['return_format'] = 'object';
 				}
@@ -355,7 +355,7 @@ if ( ! function_exists( 'wonder_acf_build_field_from_property' ) ) {
 				return wonder_acf_apply_acf_passthrough( $field, $prop );
 
 			case 'partial':
-				$ref_slug = ! empty( $prop['partial'] ) ? (string) $prop['partial'] : '';
+				$ref_slug  = ! empty( $prop['partial'] ) ? (string) $prop['partial'] : '';
 				$ref_props = wonder_acf_partial_manifest_properties( $ref_slug );
 				if ( ! $ref_props ) {
 					_doing_it_wrong(
@@ -602,7 +602,7 @@ if ( ! function_exists( 'wonder_acf_composition_tab_row_count' ) ) {
 		$count = 0;
 		foreach ( $composition as $row ) {
 			if ( wonder_acf_composition_row_is_tab( $row ) ) {
-				$count++;
+				++$count;
 			}
 		}
 
@@ -650,8 +650,8 @@ if ( ! function_exists( 'wonder_acf_composition_group_field' ) ) {
 		}
 
 		$instance_id = $row['id'];
-		$key_prefix = 'field_wndr_' . wonder_acf_field_key_suffix( $instance_id );
-		$properties = array();
+		$key_prefix  = 'field_wndr_' . wonder_acf_field_key_suffix( $instance_id );
+		$properties  = array();
 
 		if ( ! empty( $row['partial'] ) && is_string( $row['partial'] ) ) {
 			$partial_manifest = wonder_theme_manifest( $row['partial'] );
@@ -706,7 +706,8 @@ if ( ! function_exists( 'wonder_acf_tab_endpoint_stopper_field' ) ) {
 	/**
 	 * Close an ACF tab group so following fields sit outside tabs.
 	 *
-	 * @param string $suffix Unique key suffix.
+	 * @param string $suffix    Unique key suffix.
+	 * @param string $placement Tab placement (ACF `placement` value).
 	 * @return array
 	 */
 	function wonder_acf_tab_endpoint_stopper_field( $suffix, $placement = 'top' ) {
@@ -729,10 +730,10 @@ if ( ! function_exists( 'wonder_acf_tab_placement_for_template_manifest' ) ) {
 	 * @return string `left` or `top`.
 	 */
 	function wonder_acf_tab_placement_for_template_manifest( $template_manifest ) {
-		$editor = isset( $template_manifest['editor'] ) && is_array( $template_manifest['editor'] )
+		$editor   = isset( $template_manifest['editor'] ) && is_array( $template_manifest['editor'] )
 			? $template_manifest['editor']
 			: array();
-		$acf    = isset( $editor['acf'] ) && is_array( $editor['acf'] ) ? $editor['acf'] : array();
+		$acf      = isset( $editor['acf'] ) && is_array( $editor['acf'] ) ? $editor['acf'] : array();
 		$explicit = isset( $acf['tabPlacement'] ) ? $acf['tabPlacement'] : null;
 
 		if ( 'left' === $explicit || 'top' === $explicit ) {
@@ -813,7 +814,7 @@ if ( ! function_exists( 'wonder_acf_fields_from_template_composition' ) ) {
 					'endpoint'  => $start_new_tab_group ? 1 : 0,
 					'selected'  => 0 === $tab_index ? 1 : 0,
 				);
-				$tab_index++;
+				++$tab_index;
 
 				foreach ( $child_groups as $group ) {
 					$fields[] = $group;
@@ -825,8 +826,8 @@ if ( ! function_exists( 'wonder_acf_fields_from_template_composition' ) ) {
 			}
 
 			if ( $tab_group_open ) {
-				$fields[]       = wonder_acf_tab_endpoint_stopper_field( (string) $stopper_index, $tab_placement );
-				$stopper_index++;
+				$fields[] = wonder_acf_tab_endpoint_stopper_field( (string) $stopper_index, $tab_placement );
+				++$stopper_index;
 				$tab_group_open = false;
 			}
 
@@ -870,9 +871,9 @@ if ( ! function_exists( 'wonder_acf_group_from_template_manifest' ) ) {
 			return null;
 		}
 
-		$template       = $template_manifest['template'];
-		$tab_placement  = wonder_acf_tab_placement_for_template_manifest( $template_manifest );
-		$fields         = wonder_acf_fields_from_template_composition( $template_manifest['composition'], $tab_placement );
+		$template      = $template_manifest['template'];
+		$tab_placement = wonder_acf_tab_placement_for_template_manifest( $template_manifest );
+		$fields        = wonder_acf_fields_from_template_composition( $template_manifest['composition'], $tab_placement );
 
 		if ( ! $fields ) {
 			return null;

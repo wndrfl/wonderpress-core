@@ -38,7 +38,7 @@ if ( ! function_exists( 'wonder_link_append_query_params' ) ) {
 		$fragment = '';
 		if ( str_contains( $url, '#' ) ) {
 			list( $url, $fragment ) = explode( '#', $url, 2 );
-			$fragment = '#' . $fragment;
+			$fragment               = '#' . $fragment;
 		}
 
 		$separator = str_contains( $url, '?' ) ? '&' : '?';

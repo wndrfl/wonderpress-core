@@ -105,7 +105,7 @@ if ( ! function_exists( 'wonder_render_template_sections' ) ) {
 				continue;
 			}
 
-			$props = wonder_partial_props( $row['partial'], $row['id'] );
+			$props    = wonder_partial_props( $row['partial'], $row['id'] );
 			$instance = new $class( $props );
 			if ( method_exists( $instance, 'render' ) ) {
 				$instance->render();

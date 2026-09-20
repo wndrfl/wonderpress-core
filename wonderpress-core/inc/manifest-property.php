@@ -90,6 +90,7 @@ if ( ! function_exists( 'wonder_block_editor_schema_entry_from_property' ) ) {
 	 * One block editor schema property entry from a manifest property.
 	 *
 	 * @param array<string, mixed> $prop Manifest property.
+	 * @param array<int, string>   $visited_partial_slugs Slugs already expanded (cycle guard).
 	 * @return array<string, mixed>|null
 	 */
 	function wonder_block_editor_schema_entry_from_property( array $prop, array $visited_partial_slugs = array() ) {

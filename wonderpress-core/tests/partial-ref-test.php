@@ -32,7 +32,7 @@ if ( ! function_exists( 'apply_filters' ) ) {
 require dirname( __DIR__ ) . '/inc/manifests.php';
 require dirname( __DIR__ ) . '/inc/acf.php';
 
-$link_manifest = json_decode(
+$link_manifest    = json_decode(
 	file_get_contents( dirname( __DIR__ ) . '/manifest/partials/link.json' ),
 	true
 );

@@ -37,9 +37,9 @@ $properties = array(
 		'acf'     => array( 'ui' => 1 ),
 	),
 	array(
-		'name' => 'internal_target_obj',
-		'type' => 'post_object',
-		'when' => array(
+		'name'      => 'internal_target_obj',
+		'type'      => 'post_object',
+		'when'      => array(
 			array(
 				array(
 					'field'    => 'type',
@@ -48,8 +48,8 @@ $properties = array(
 				),
 			),
 		),
-		'post_type'     => array( 'page' ),
-		'acf'           => array(
+		'post_type' => array( 'page' ),
+		'acf'       => array(
 			'return_format' => 'object',
 		),
 	),

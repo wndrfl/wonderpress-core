@@ -13,6 +13,8 @@
 
     <!-- Exclude files -->
     <exclude-pattern>*/vendor/*</exclude-pattern>
+    <!-- Standalone PHP smoke scripts (not PHPUnit); run via `php wonderpress-core/tests/…`. -->
+    <exclude-pattern>*/wonderpress-core/tests/*</exclude-pattern>
 
     <!-- Show colors in console -->
     <arg name="colors"/>

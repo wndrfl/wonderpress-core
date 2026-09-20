@@ -131,8 +131,8 @@ class Link extends Abstract_Partial {
 					if ( empty( $params['acf']['telephone'] ) ) {
 						break;
 					}
-					$tel = preg_replace( '/\s+/', '', (string) $params['acf']['telephone'] );
-					$tel = ltrim( $tel, '+' );
+					$tel       = preg_replace( '/\s+/', '', (string) $params['acf']['telephone'] );
+					$tel       = ltrim( $tel, '+' );
 					$this->url = 'tel:+' . $tel;
 					break;
 				case 'url':
