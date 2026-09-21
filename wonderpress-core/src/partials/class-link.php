@@ -108,45 +108,44 @@ class Link extends Abstract_Partial {
 		}
 
 		if ( ! $this->url && $this->type ) {
-			switch ( $this->type ) {
-				case 'email':
-					if ( empty( $params['acf']['email'] ) ) {
-						break;
-					}
-					$this->url = 'mailto:' . $params['acf']['email'];
-					break;
-				case 'file':
-					if ( empty( $params['acf']['file'] ) ) {
-						break;
-					}
-					$this->url = get_permalink( $params['acf']['file'] );
-					break;
-				case 'internal':
-					if ( empty( $params['acf']['internal_target_obj'] ) ) {
-						break;
-					}
-					$this->url = get_permalink( $params['acf']['internal_target_obj'] );
-					break;
-				case 'telephone':
-					if ( empty( $params['acf']['telephone'] ) ) {
-						break;
-					}
-					$tel       = preg_replace( '/\s+/', '', (string) $params['acf']['telephone'] );
-					$tel       = ltrim( $tel, '+' );
-					$this->url = 'tel:+' . $tel;
-					break;
-				case 'url':
-					if ( ! empty( $params['acf']['url'] ) ) {
-						$this->url = (string) $params['acf']['url'];
-					}
-					break;
+			$acf   = isset( $params['acf'] ) && is_array( $params['acf'] ) ? $params['acf'] : array();
+			$built = \wonder_link_url_from_acf( $acf );
+			if ( $built ) {
+				$this->url = $built;
 			}
 		}
 
-		if ( $this->url && ! empty( $params['acf']['add_query_params'] ) && ! empty( $params['acf']['query_params'] ) ) {
+		if ( $this->url && ! empty( $params['acf'] ) && ! empty( $params['acf']['add_query_params'] ) && ! empty( $params['acf']['query_params'] ) ) {
 			$this->url = \wonder_link_append_query_params( $this->url, $params['acf']['query_params'] );
 		}
 
 		$this->coerce_boolean_properties_from_acf();
+	}
+
+	/**
+	 * Merge new-tab rel tokens into attributes before render.
+	 *
+	 * @return Boolean
+	 */
+	public function prepare_properties_for_display() {
+		$attrs = is_array( $this->attributes ) ? $this->attributes : array();
+		$rel   = \wonder_link_merge_rel(
+			! empty( $this->open_in_new_tab ),
+			isset( $attrs['rel'] ) ? (string) $attrs['rel'] : ''
+		);
+
+		if ( '' !== $rel ) {
+			$attrs['rel'] = $rel;
+		} else {
+			unset( $attrs['rel'] );
+		}
+
+		if ( ! empty( $this->open_in_new_tab ) && empty( $attrs['target'] ) ) {
+			$attrs['target'] = '_blank';
+		}
+
+		$this->attributes = $attrs;
+
+		return true;
 	}
 }

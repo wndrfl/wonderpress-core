@@ -74,6 +74,27 @@ abstract class Abstract_Partial implements Partial_Interface {
 	}
 
 	/**
+	 * Whether a magic property is set, so empty() and isset() call __get.
+	 *
+	 * Without this, empty( $this->open_in_new_tab ) is always true for a
+	 * magic property.
+	 *
+	 * @param String $property The property to check.
+	 * @return Boolean
+	 */
+	public function __isset( $property ) {
+		if ( ! isset( static::$_properties[ $property ] ) ) {
+			return false;
+		}
+
+		if ( array_key_exists( $property, $this->_attrs ) && ! is_null( $this->_attrs[ $property ] ) ) {
+			return true;
+		}
+
+		return isset( static::$_properties[ $property ]['default'] );
+	}
+
+	/**
 	 * A magic setter method.
 	 *
 	 * @param String $property The property to attempt to set.
@@ -354,6 +375,27 @@ abstract class Abstract_Partial implements Partial_Interface {
 
 		$html = static::compress_html( $html );
 
+		$allowed_tags = static::allowed_html();
+
+		if ( ! $echo ) {
+			return wp_kses( $html, $allowed_tags );
+		}
+
+		echo wp_kses( $html, $allowed_tags );
+
+		return true;
+	}
+
+	/**
+	 * Allowed HTML for partial output.
+	 *
+	 * Extends the post kses set with SVG, picture, and img attributes WordPress
+	 * still omits from `wp_kses_allowed_html( 'post' )` (decoding, srcset,
+	 * sizes, fetchpriority).
+	 *
+	 * @return Array
+	 */
+	public static function allowed_html() {
 		$allowed_tags = array_merge(
 			wp_kses_allowed_html( 'post' ),
 			array(
@@ -368,7 +410,9 @@ abstract class Abstract_Partial implements Partial_Interface {
 				'picture' => array(),
 				'source'  => array(
 					'media'  => array(),
+					'sizes'  => array(),
 					'srcset' => array(),
+					'type'   => array(),
 				),
 				'svg'     => array(
 					'class'           => array(),
@@ -398,13 +442,20 @@ abstract class Abstract_Partial implements Partial_Interface {
 			)
 		);
 
-		if ( ! $echo ) {
-			return wp_kses( $html, $allowed_tags );
-		}
+		$img_correctness = array(
+			'decoding'      => true,
+			'fetchpriority' => true,
+			'loading'       => true,
+			'sizes'         => true,
+			'srcset'        => true,
+		);
 
-		echo wp_kses( $html, $allowed_tags );
+		$allowed_tags['img'] = array_merge(
+			isset( $allowed_tags['img'] ) && is_array( $allowed_tags['img'] ) ? $allowed_tags['img'] : array(),
+			$img_correctness
+		);
 
-		return true;
+		return $allowed_tags;
 	}
 
 	/**

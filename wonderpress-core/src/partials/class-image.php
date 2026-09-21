@@ -59,6 +59,12 @@ class Image extends Abstract_Partial {
 			'format'      => 'string',
 			'required'    => false,
 		),
+		'decoding'   => array(
+			'description' => 'The img decoding attribute (async, sync, or auto)',
+			'default'     => 'async',
+			'format'      => 'string',
+			'required'    => false,
+		),
 		'height'     => array(
 			'description' => 'The height of the image (used for attributes only).',
 			'format'      => 'string',
@@ -70,14 +76,19 @@ class Image extends Abstract_Partial {
 			'format'      => 'string',
 			'required'    => false,
 		),
+		'sizes'      => array(
+			'description' => 'The sizes attribute for a responsive <img>',
+			'format'      => 'string',
+			'required'    => false,
+		),
 		'src'        => array(
 			'description' => 'The image src attribute',
 			'format'      => 'string',
 			'required'    => true,
 		),
 		'srcset'     => array(
-			'description' => 'A srcset for a <picture> element',
-			'format'      => 'array',
+			'description' => 'A native srcset string, or an art-direction map of min-width => URL for <picture>',
+			'format'      => 'string|array',
 			'required'    => false,
 		),
 		'width'      => array(
@@ -94,23 +105,57 @@ class Image extends Abstract_Partial {
 	 */
 	public function prepare_properties_for_display() {
 
-		// If ACF is provided, we do some more special assignments
 		if ( isset( $this->_attrs['acf'] ) && is_array( $this->_attrs['acf'] ) ) {
+
+			// ACF image arrays also have a `sizes` key (width/height map). That
+			// is not the HTML sizes attribute.
+			if ( is_array( $this->sizes ) ) {
+				$this->sizes = null;
+			}
 
 			$src = $this->get_acf_size_url( $this->size );
 			if ( $src ) {
 				$this->src = $src;
 			}
 
-			$this->srcset = array(
-				'1024' => $this->get_acf_size_url( 'banner', $this->src ),
-				'768'  => $this->get_acf_size_url( 'large', $this->src ),
-				'120'  => $this->get_acf_size_url( 'medium', $this->src ),
-				'0'    => $this->get_acf_size_url( 'small', $this->src ),
-			);
+			$attachment_id = isset( $this->_attrs['acf']['ID'] ) ? (int) $this->_attrs['acf']['ID'] : 0;
 
-			$this->width  = isset( $this->_attrs['acf']['width'] ) ? (string) $this->_attrs['acf']['width'] : null;
-			$this->height = isset( $this->_attrs['acf']['height'] ) ? (string) $this->_attrs['acf']['height'] : null;
+			// Native srcset/sizes unless the caller already passed art-direction
+			// (an array) or an explicit srcset string.
+			if ( empty( $this->srcset ) && $attachment_id && function_exists( 'wp_get_attachment_image_srcset' ) ) {
+				$size_name = $this->attachment_size_name();
+				$srcset    = wp_get_attachment_image_srcset( $attachment_id, $size_name );
+				if ( ! $srcset && $size_name !== $this->size ) {
+					$srcset = wp_get_attachment_image_srcset( $attachment_id, $this->size );
+				}
+				if ( $srcset ) {
+					$this->srcset = $srcset;
+				}
+
+				if ( empty( $this->sizes ) && function_exists( 'wp_get_attachment_image_sizes' ) ) {
+					$sizes = wp_get_attachment_image_sizes( $attachment_id, $size_name );
+					if ( ! $sizes && $size_name !== $this->size ) {
+						$sizes = wp_get_attachment_image_sizes( $attachment_id, $this->size );
+					}
+					if ( $sizes ) {
+						$this->sizes = $sizes;
+					}
+				}
+			}
+
+			$width = $this->get_acf_size_dimension( 'width' );
+			if ( null !== $width ) {
+				$this->width = $width;
+			} elseif ( ! $this->is_blank_dimension( $this->width ) ) {
+				$this->width = (string) $this->width;
+			}
+
+			$height = $this->get_acf_size_dimension( 'height' );
+			if ( null !== $height ) {
+				$this->height = $height;
+			} elseif ( ! $this->is_blank_dimension( $this->height ) ) {
+				$this->height = (string) $this->height;
+			}
 		}
 
 		// Fall back to the attachment's stored alt text, then to an empty
@@ -124,6 +169,59 @@ class Image extends Abstract_Partial {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Whether a width/height value is missing (do not invent sizes).
+	 *
+	 * @param Mixed $value The dimension value.
+	 * @return Boolean
+	 */
+	protected function is_blank_dimension( $value ) {
+		return is_null( $value ) || false === $value || '' === $value;
+	}
+
+	/**
+	 * WP size name to request, preferring the theme-prefixed registration.
+	 *
+	 * @return String
+	 */
+	protected function attachment_size_name() {
+		$prefixed = 'wonderpress-' . $this->size;
+		$sizes    = isset( $this->_attrs['acf']['sizes'] ) && is_array( $this->_attrs['acf']['sizes'] ) ? $this->_attrs['acf']['sizes'] : array();
+
+		if ( ! empty( $sizes[ $prefixed ] ) ) {
+			return $prefixed;
+		}
+
+		return $this->size;
+	}
+
+	/**
+	 * Width or height for the selected size from an ACF image array.
+	 *
+	 * @param String $axis 'width' or 'height'.
+	 * @return String|null
+	 */
+	protected function get_acf_size_dimension( $axis ) {
+		$sizes      = isset( $this->_attrs['acf']['sizes'] ) && is_array( $this->_attrs['acf']['sizes'] ) ? $this->_attrs['acf']['sizes'] : array();
+		$size       = $this->size;
+		$prefixed   = 'wonderpress-' . $size . '-' . $axis;
+		$unprefixed = $size . '-' . $axis;
+
+		if ( isset( $sizes[ $prefixed ] ) && '' !== $sizes[ $prefixed ] && false !== $sizes[ $prefixed ] ) {
+			return (string) $sizes[ $prefixed ];
+		}
+
+		if ( isset( $sizes[ $unprefixed ] ) && '' !== $sizes[ $unprefixed ] && false !== $sizes[ $unprefixed ] ) {
+			return (string) $sizes[ $unprefixed ];
+		}
+
+		if ( isset( $this->_attrs['acf'][ $axis ] ) && '' !== $this->_attrs['acf'][ $axis ] && false !== $this->_attrs['acf'][ $axis ] ) {
+			return (string) $this->_attrs['acf'][ $axis ];
+		}
+
+		return null;
 	}
 
 	/**
@@ -143,6 +241,10 @@ class Image extends Abstract_Partial {
 
 		if ( ! empty( $sizes[ $size ] ) ) {
 			return $sizes[ $size ];
+		}
+
+		if ( ! empty( $this->_attrs['acf']['url'] ) ) {
+			return $this->_attrs['acf']['url'];
 		}
 
 		return $fallback;

@@ -48,4 +48,72 @@ assert( str_contains( $appended, 'a=1' ) && str_contains( $appended, 'b=2' ), 'q
 $appended_q = wonder_link_append_query_params( 'https://example.com/?x=1', '?a=1' );
 assert( str_contains( $appended_q, 'a=1' ), 'query params with leading ?' );
 
+assert( 'noopener noreferrer' === wonder_link_merge_rel( true, '' ), 'new-tab rel defaults' );
+assert( 'noopener noreferrer nofollow' === wonder_link_merge_rel( true, 'nofollow' ), 'new-tab keeps noopener when merging nofollow' );
+assert( 'nofollow' === wonder_link_merge_rel( false, 'nofollow' ), 'same-tab caller rel unchanged' );
+
+assert( 'mailto:hi@example.com' === wonder_link_url_from_acf( array( 'type' => 'email', 'email' => 'hi@example.com' ) ), 'email href' );
+assert( 'tel:+15551212' === wonder_link_url_from_acf( array( 'type' => 'telephone', 'telephone' => '+1 555 1212' ) ), 'tel href' );
+assert( 'https://example.com' === wonder_link_url_from_acf( array( 'type' => 'url', 'url' => 'https://example.com' ) ), 'url href' );
+
+if ( ! defined( 'WONDERPRESS_CORE_PATH' ) ) {
+	define( 'WONDERPRESS_CORE_PATH', dirname( __DIR__ ) . '/' );
+}
+if ( ! function_exists( 'locate_template' ) ) {
+	function locate_template() {
+		return '';
+	}
+}
+if ( ! function_exists( 'esc_url' ) ) {
+	function esc_url( $url ) {
+		return $url;
+	}
+}
+if ( ! function_exists( 'esc_attr' ) ) {
+	function esc_attr( $text ) {
+		return htmlspecialchars( (string) $text, ENT_QUOTES, 'UTF-8' );
+	}
+}
+if ( ! function_exists( 'esc_html' ) ) {
+	function esc_html( $text ) {
+		return $text;
+	}
+}
+if ( ! function_exists( 'wp_kses' ) ) {
+	function wp_kses( $html, $allowed_html ) {
+		return $html;
+	}
+}
+if ( ! function_exists( 'wp_kses_allowed_html' ) ) {
+	function wp_kses_allowed_html() {
+		return array(
+			'a' => array(
+				'href'   => true,
+				'rel'    => true,
+				'target' => true,
+				'class'  => true,
+			),
+		);
+	}
+}
+
+require_once dirname( __DIR__ ) . '/src/partials/class-partial-interface.php';
+require_once dirname( __DIR__ ) . '/src/partials/class-abstract-partial.php';
+require_once dirname( __DIR__ ) . '/src/partials/class-link.php';
+
+$link = new Wonderpress_Core\Partials\Link(
+	array(
+		'url'             => 'https://example.com',
+		'content'         => 'Example',
+		'open_in_new_tab' => true,
+		'attributes'      => array(
+			'rel' => 'nofollow',
+		),
+	)
+);
+$link_html = $link->render( false );
+assert( str_contains( $link_html, 'target="_blank"' ), 'new tab target' );
+assert( 1 === preg_match_all( '/\brel="/', $link_html ), 'single rel attribute' );
+assert( str_contains( $link_html, 'noopener' ) && str_contains( $link_html, 'noreferrer' ) && str_contains( $link_html, 'nofollow' ), 'merged rel tokens' );
+
 fwrite( STDOUT, "link-primitive-test.php OK\n" );
