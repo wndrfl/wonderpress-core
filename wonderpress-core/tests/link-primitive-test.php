@@ -19,6 +19,7 @@ if ( ! function_exists( '__' ) ) {
 	}
 }
 
+require dirname( __DIR__ ) . '/inc/manifest-property.php';
 require dirname( __DIR__ ) . '/inc/acf.php';
 require dirname( __DIR__ ) . '/inc/link-utils.php';
 

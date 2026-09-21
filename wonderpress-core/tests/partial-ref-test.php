@@ -30,6 +30,7 @@ if ( ! function_exists( 'apply_filters' ) ) {
 }
 
 require dirname( __DIR__ ) . '/inc/manifests.php';
+require dirname( __DIR__ ) . '/inc/manifest-property.php';
 require dirname( __DIR__ ) . '/inc/acf.php';
 
 $link_manifest    = json_decode(

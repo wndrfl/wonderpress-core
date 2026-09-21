@@ -143,6 +143,39 @@ abstract class Abstract_Partial implements Partial_Interface {
 				}
 			}
 		}
+
+		$this->coerce_boolean_properties_from_acf();
+	}
+
+	/**
+	 * ACF and block storage often use 0/1 instead of booleans; normalize for validation.
+	 *
+	 * @return void
+	 */
+	protected function coerce_boolean_properties_from_acf() {
+		if ( ! function_exists( 'wonder_normalize_boolean_value' ) ) {
+			return;
+		}
+
+		foreach ( static::$_properties as $property_key => $property_config ) {
+			if ( 'acf' === $property_key || ! isset( $property_config['format'] ) ) {
+				continue;
+			}
+
+			$formats = explode( '|', (string) $property_config['format'] );
+			if ( ! in_array( 'boolean', $formats, true ) && ! in_array( 'bool', $formats, true ) ) {
+				continue;
+			}
+
+			if ( ! array_key_exists( $property_key, $this->_attrs ) ) {
+				continue;
+			}
+
+			$coerced = wonder_normalize_boolean_value( $this->_attrs[ $property_key ] );
+			if ( null !== $coerced ) {
+				$this->_attrs[ $property_key ] = $coerced;
+			}
+		}
 	}
 
 	/**
@@ -234,6 +267,10 @@ abstract class Abstract_Partial implements Partial_Interface {
 							break;
 						case 'string':
 							$is_valid = is_string( $this->$key ) || ( is_bool( $this->$key ) && ! $this->$key );
+							break;
+						case 'integer':
+						case 'int':
+							$is_valid = is_int( $this->$key ) || ( is_numeric( $this->$key ) && ! is_float( $this->$key + 0 ) );
 							break;
 					}
 

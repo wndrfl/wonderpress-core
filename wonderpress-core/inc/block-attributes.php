@@ -7,6 +7,49 @@
 
 defined( 'ABSPATH' ) || exit;
 
+if ( ! function_exists( 'wonder_normalize_boolean_value' ) ) {
+	/**
+	 * Coerce ACF / block / JSON booleans to a real PHP bool (or null when empty).
+	 *
+	 * @param mixed $value Raw value.
+	 * @return bool|null
+	 */
+	function wonder_normalize_boolean_value( $value ) {
+		if ( null === $value || '' === $value ) {
+			return null;
+		}
+		if ( is_bool( $value ) ) {
+			return $value;
+		}
+		if ( is_numeric( $value ) ) {
+			return 0 !== (int) $value;
+		}
+		if ( is_string( $value ) ) {
+			$lower = strtolower( $value );
+			if ( in_array( $lower, array( '0', 'false', 'off', 'no' ), true ) ) {
+				return false;
+			}
+			if ( in_array( $lower, array( '1', 'true', 'on', 'yes' ), true ) ) {
+				return true;
+			}
+		}
+		return (bool) $value;
+	}
+}
+
+if ( ! function_exists( 'wonder_is_truthy_manifest_value' ) ) {
+	/**
+	 * Whether a manifest boolean property should read as "on" in templates.
+	 *
+	 * @param mixed $value Property value after ACF or block storage.
+	 * @return bool
+	 */
+	function wonder_is_truthy_manifest_value( $value ) {
+		$bool = wonder_normalize_boolean_value( $value );
+		return true === $bool;
+	}
+}
+
 if ( ! function_exists( 'wonder_normalize_image_value' ) ) {
 	/**
 	 * Expand attachment references to the canonical image array partials expect.
@@ -115,10 +158,14 @@ if ( ! function_exists( 'wonder_normalize_link_value' ) ) {
 			return null;
 		}
 
+		$open = array_key_exists( 'open_in_new_tab', $value )
+			? wonder_normalize_boolean_value( $value['open_in_new_tab'] )
+			: false;
+
 		return array(
 			'content'         => $content,
 			'url'             => $url,
-			'open_in_new_tab' => ! empty( $value['open_in_new_tab'] ),
+			'open_in_new_tab' => (bool) $open,
 			'title'           => $title,
 		);
 	}
@@ -197,6 +244,9 @@ if ( ! function_exists( 'wonder_normalize_repeater_value' ) ) {
 
 				$sub_key = (string) $sub['name'];
 				if ( ! array_key_exists( $sub_key, $row ) ) {
+					if ( 'boolean' === $sub['type'] ) {
+						$normalized_row[ $sub_key ] = false;
+					}
 					continue;
 				}
 
@@ -248,6 +298,9 @@ if ( ! function_exists( 'wonder_normalize_partial_value' ) ) {
 
 			$sub_key = (string) $sub['name'];
 			if ( ! array_key_exists( $sub_key, $value ) ) {
+				if ( 'boolean' === $sub['type'] ) {
+					$normalized[ $sub_key ] = false;
+				}
 				continue;
 			}
 
@@ -273,6 +326,9 @@ if ( ! function_exists( 'wonder_normalize_property_value' ) ) {
 	 */
 	function wonder_normalize_property_value( $type, $value, array $prop_def = array() ) {
 		switch ( $type ) {
+			case 'boolean':
+				$bool = wonder_normalize_boolean_value( $value );
+				return null === $bool ? false : $bool;
 			case 'image':
 				return wonder_normalize_image_value( $value );
 			case 'link':

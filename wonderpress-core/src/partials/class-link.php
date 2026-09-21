@@ -146,5 +146,7 @@ class Link extends Abstract_Partial {
 		if ( $this->url && ! empty( $params['acf']['add_query_params'] ) && ! empty( $params['acf']['query_params'] ) ) {
 			$this->url = \wonder_link_append_query_params( $this->url, $params['acf']['query_params'] );
 		}
+
+		$this->coerce_boolean_properties_from_acf();
 	}
 }
