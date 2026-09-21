@@ -411,6 +411,7 @@ if ( ! function_exists( 'wonder_enqueue_block_editor_preview' ) ) {
 				'wp-element',
 				'wp-block-editor',
 				'wp-components',
+				'wp-compose',
 				'wp-server-side-render',
 				'wp-i18n',
 				'wp-api-fetch',
