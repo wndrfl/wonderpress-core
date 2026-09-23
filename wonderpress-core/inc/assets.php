@@ -66,11 +66,8 @@ if ( ! function_exists( 'wonder_enqueue_styles' ) ) {
 	 */
 	function wonder_enqueue_styles() {
 
-		// style.css is deliberately NOT enqueued here. It is the theme's own
-		// file, it carries the accessibility baseline that core-generated
-		// markup relies on, and it is the one stylesheet that should still
-		// load when this package is absent — so the theme enqueues it itself.
-		// What belongs here is only the Static Kit build convention.
+		// style.css is the WordPress theme identity file (headers only). It is
+		// not enqueued. Front-end CSS is the Static Kit bundle below.
 		$path = wonder_asset_path( 'css' );
 		if ( ! $path ) {
 			return;
