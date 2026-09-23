@@ -46,6 +46,16 @@ if ( ! function_exists( 'wonder_render_partial_ref' ) ) {
 			return '';
 		}
 
+		if ( function_exists( 'wonder_normalize_partial_value' ) ) {
+			$acf_data = wonder_normalize_partial_value(
+				$acf_data,
+				array(
+					'type'    => 'partial',
+					'partial' => $partial_slug,
+				)
+			);
+		}
+
 		$partial = new $class(
 			array(
 				'acf' => $acf_data,

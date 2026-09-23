@@ -29,7 +29,28 @@
 ( function ( wp, names ) {
 	'use strict';
 
-	if ( ! wp || ! wp.blocks || ! wp.element || ! wp.serverSideRender || ! wp.blockEditor || ! wp.components || ! wp.apiFetch ) {
+	var requiredGlobals = {
+		blocks: wp && wp.blocks,
+		element: wp && wp.element,
+		serverSideRender: wp && wp.serverSideRender,
+		blockEditor: wp && wp.blockEditor,
+		components: wp && wp.components,
+		apiFetch: wp && wp.apiFetch,
+		'compose.useDisabled': wp && wp.compose && wp.compose.useDisabled,
+	};
+	var missingGlobals = Object.keys( requiredGlobals ).filter( function ( key ) {
+		return ! requiredGlobals[ key ];
+	} );
+
+	if ( missingGlobals.length ) {
+		if ( window.console && window.console.warn ) {
+			window.console.warn(
+				'WonderPress editor preview did not start. Missing WordPress globals: ' +
+					missingGlobals.map( function ( key ) {
+						return 'wp.' + key;
+					} ).join( ', ' )
+			);
+		}
 		return;
 	}
 
@@ -39,6 +60,7 @@
 	var useEffect         = wp.element.useEffect;
 	var apiFetch          = wp.apiFetch;
 	var ServerSideRender  = wp.serverSideRender;
+	var useDisabled       = wp.compose.useDisabled;
 	var useBlockProps     = wp.blockEditor.useBlockProps;
 	var InspectorControls = wp.blockEditor.InspectorControls;
 	var MediaUpload       = wp.blockEditor.MediaUpload;
@@ -908,9 +930,11 @@
 
 		wp.blocks.registerBlockType( name, {
 			edit: function ( props ) {
-				var blockType = wp.blocks.getBlockType( props.name );
-				var fields    = controlsFor( props );
-				var title     = ( blockType && blockType.title ) || props.name;
+				var blockType   = wp.blocks.getBlockType( props.name );
+				var fields      = controlsFor( props );
+				var title       = ( blockType && blockType.title ) || props.name;
+				var disabledRef = useDisabled();
+				var blockProps  = useBlockProps( { ref: disabledRef } );
 
 				var body = isUntouched( props, blockType )
 					? el(
@@ -926,11 +950,26 @@
 					: el( ServerSideRender, {
 						block: name,
 						attributes: props.attributes,
+						httpMethod: 'POST',
+						skipBlockSupportAttributes: true,
 						EmptyResponsePlaceholder: function () {
 							return el(
 								'p',
 								{ style: { opacity: 0.6, fontStyle: 'italic', margin: 0 } },
 								title + ' — nothing to preview yet'
+							);
+						},
+						ErrorResponsePlaceholder: function ( errorProps ) {
+							return el(
+								Placeholder,
+								{
+									icon: blockType && blockType.icon && blockType.icon.src,
+									label: title,
+									instructions: 'The preview could not be loaded. Check the block settings and browser console.',
+								},
+								errorProps && errorProps.message
+									? el( 'code', null, String( errorProps.message ) )
+									: null
 							);
 						},
 					} );
@@ -945,7 +984,7 @@
 							el( PanelBody, { title: 'Content', initialOpen: true }, fields )
 						)
 						: null,
-					el( 'div', useBlockProps(), body )
+					el( 'div', blockProps, body )
 				);
 			},
 

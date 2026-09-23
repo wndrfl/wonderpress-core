@@ -225,11 +225,9 @@ if ( ! function_exists( 'wonder_template_locks' ) ) {
 	 * Keyed by template slug as WordPress reports it — `page-landing.php` — with
 	 * `default` standing for a page on no particular template. Values:
 	 *
-	 *   'all'         Bespoke, code-rendered. Nothing moves, nothing is added.
-	 *   'contentOnly' Text is editable, layout is frozen. The usual answer for
-	 *                 client-editable pages, and the one most agencies skip.
-	 *   'insert'      Blocks may be reordered but not added or removed.
-	 *   false         Open composition.
+	 *   'all'    Bespoke, code-rendered. Nothing moves, nothing is added.
+	 *   'insert' Blocks may be reordered but not added or removed.
+	 *   false    Open composition.
 	 *
 	 * Empty by default: which pages a client may restructure is a decision each
 	 * project makes, and silently freezing an existing site's pages on a plugin
@@ -291,12 +289,12 @@ if ( ! function_exists( 'wonder_page_lock' ) ) {
 
 		$lock = $locks[ $slug ];
 
-		if ( ! in_array( $lock, array( 'all', 'insert', 'contentOnly', false ), true ) ) {
+		if ( ! in_array( $lock, array( 'all', 'insert', false ), true ) ) {
 			_doing_it_wrong(
 				__FUNCTION__,
 				sprintf(
 					/* translators: 1: template slug, 2: the invalid value */
-					esc_html__( 'Template "%1$s" was given an unrecognised lock level (%2$s). Use "all", "insert", "contentOnly" or false.', 'wonderpress' ),
+					esc_html__( 'Template "%1$s" was given an unrecognised lock level (%2$s). Use "all", "insert" or false.', 'wonderpress' ),
 					esc_html( $slug ),
 					esc_html( var_export( $lock, true ) ) // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_var_export
 				),
@@ -411,6 +409,7 @@ if ( ! function_exists( 'wonder_enqueue_block_editor_preview' ) ) {
 				'wp-element',
 				'wp-block-editor',
 				'wp-components',
+				'wp-compose',
 				'wp-server-side-render',
 				'wp-i18n',
 				'wp-api-fetch',

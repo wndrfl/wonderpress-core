@@ -78,6 +78,16 @@ $from_link = wonder_normalize_link_value(
 assert( is_array( $from_link ) );
 assert( 'Read more' === $from_link['content'] );
 assert( true === $from_link['open_in_new_tab'] );
+assert( false === wonder_normalize_link_value(
+	array(
+		'content'         => 'x',
+		'url'             => 'https://example.test',
+		'open_in_new_tab' => 0,
+	)
+)['open_in_new_tab'] );
+assert( false === wonder_normalize_boolean_value( 0 ) );
+assert( true === wonder_normalize_boolean_value( 1 ) );
+assert( false === wonder_is_truthy_manifest_value( 0 ) );
 
 assert(
 	null === wonder_normalize_link_value(

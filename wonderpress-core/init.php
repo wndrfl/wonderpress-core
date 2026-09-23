@@ -141,15 +141,26 @@ if ( ! function_exists( 'wonder_core_url' ) ) {
 		$path        = wp_normalize_path( WONDERPRESS_CORE_PATH ) . $relative_path;
 		$content_dir = trailingslashit( wp_normalize_path( WP_CONTENT_DIR ) );
 
-		// A package installed outside wp-content has no servable URL, and
-		// guessing one would produce a 404 rather than an honest failure.
-		// PHP resolves symlinks in __FILE__, so a symlinked `path` checkout
-		// lands here too: its assets genuinely are not reachable over HTTP.
-		if ( 0 !== strpos( $path, $content_dir ) ) {
-			return '';
+		if ( 0 === strpos( $path, $content_dir ) ) {
+			return content_url( substr( $path, strlen( $content_dir ) ) );
 		}
 
-		return content_url( substr( $path, strlen( $content_dir ) ) );
+		// Composer `path` repos (and wp-env mappings) often load this package
+		// through a symlink whose target is outside wp-content, so __FILE__ and
+		// WONDERPRESS_CORE_PATH resolve off the web root even though the same
+		// files are also exposed under the theme's vendor/ tree (or a mapping).
+		$vendor_relative = 'vendor/wndrfl/wonderpress-core/wonderpress-core/' . $relative_path;
+		foreach ( array_unique( array( get_stylesheet_directory(), get_template_directory() ) ) as $theme_dir ) {
+			if ( ! $theme_dir ) {
+				continue;
+			}
+			$candidate = wp_normalize_path( $theme_dir . '/' . $vendor_relative );
+			if ( file_exists( $candidate ) && 0 === strpos( $candidate, $content_dir ) ) {
+				return content_url( substr( $candidate, strlen( $content_dir ) ) );
+			}
+		}
+
+		return '';
 	}
 }
 
