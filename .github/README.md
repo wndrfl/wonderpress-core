@@ -26,3 +26,7 @@ To attempt to automatically fix as many issues as possible:
 ```bash
 $ composer run-script lint-fix
 ````
+
+## License
+
+GPL-2.0-or-later — see [LICENSE](../LICENSE).
