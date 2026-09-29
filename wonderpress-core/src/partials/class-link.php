@@ -59,7 +59,7 @@ class Link extends Abstract_Partial {
 			'description' => 'Whether or not this link should open in a new tab when clicked',
 			'format'      => 'boolean',
 			'default'     => false,
-			'required'    => true,
+			'required'    => false,
 		),
 		'title'           => array(
 			'description' => 'A title to used to aid screenreaders in understanding this link',
