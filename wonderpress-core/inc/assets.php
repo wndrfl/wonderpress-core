@@ -81,15 +81,19 @@ if ( ! function_exists( 'wonder_enqueue_styles' ) ) {
 			wp_register_style( 'wonderpress-inline', false, array(), (string) filemtime( $absolute ) );
 			wp_enqueue_style( 'wonderpress-inline' );
 			wp_add_inline_style( 'wonderpress-inline', (string) file_get_contents( $absolute ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Local theme file, not remote data.
+			wonder_enqueue_token_bridge( 'wonderpress-inline' );
 			return;
 		}
 
+		$handle = 'wonderpress-' . wonder_body_id();
+
 		wp_enqueue_style(
-			'wonderpress-' . wonder_body_id(),
+			$handle,
 			get_template_directory_uri() . $path,
 			array(),
 			(string) filemtime( $absolute )
 		);
+		wonder_enqueue_token_bridge( $handle );
 	}
 
 	add_action( 'wp_enqueue_scripts', 'wonder_enqueue_styles' );
