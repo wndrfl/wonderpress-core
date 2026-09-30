@@ -20,24 +20,24 @@ class Link extends Abstract_Partial {
 	/**
 	 * Whether this partial accepts an ACF parameter for easy hydration.
 	 *
-	 * @var Boolean $_acf_compatible
+	 * @var Boolean $acf_compatible
 	 */
-	protected $_acf_compatible = true;
+	protected $acf_compatible = true;
 
 	/**
 	 * The view template for this partial. Themes may override it by shipping
 	 * a file at this relative path.
 	 *
-	 * @var String $_partial_template
+	 * @var String $partial_template
 	 */
-	protected $_partial_template = 'partials/link.php';
+	protected $partial_template = 'partials/link.php';
 
 	/**
 	 * A definition of all available properties.
 	 *
-	 * @var Array $_properties
+	 * @var Array $properties
 	 */
-	protected static $_properties = array(
+	protected static $properties = array(
 		'attributes'      => array(
 			'description' => 'An array of arbitrary attributes for the anchor element',
 			'format'      => 'array',
@@ -87,12 +87,12 @@ class Link extends Abstract_Partial {
 	 */
 	public function attempt_acf_ingestion( array $params = array() ) {
 
-		if ( ! $this->_acf_compatible ) {
+		if ( ! $this->declared_value( 'acf_compatible' ) ) {
 			return;
 		}
 
 		if ( isset( $params['acf'] ) ) {
-			foreach ( static::$_properties as $property_key => $property_config ) {
+			foreach ( static::property_definitions() as $property_key => $property_config ) {
 
 				if ( 'acf' === $property_key ) {
 					continue;

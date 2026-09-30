@@ -20,36 +20,101 @@ abstract class Abstract_Partial implements Partial_Interface {
 	/**
 	 * Whether this partial accepts an ACF parameter for easy hydration.
 	 *
-	 * @var Boolean $_acf_compatible
+	 * @var Boolean $acf_compatible
 	 */
-	protected $_acf_compatible = false;
+	protected $acf_compatible = false;
 
 	/**
 	 * All attributes for the template will be stored here.
 	 *
-	 * @var Array $_attrs
+	 * @var Array $attrs
 	 */
-	protected $_attrs = array();
+	protected $attrs = array();
 
 	/**
 	 * A definition of all available properties.
 	 *
-	 * @var Array $_properties
+	 * @var Array $properties
 	 */
-	protected static $_properties = array();
+	protected static $properties = array();
 
 	/**
 	 * A relative path to a partial template to use as the view for this partial.
 	 *
-	 * @var String|Boolean $_partial_template
+	 * @var String|Boolean $partial_template
 	 */
-	protected $_partial_template = null;
+	protected $partial_template = null;
+
+	/**
+	 * Property map declared on this partial.
+	 *
+	 * Generated classes used to redeclare $_properties. Prefer a map the
+	 * called class declares under the current name, and fall back to that
+	 * legacy name so older partials keep hydrating.
+	 *
+	 * @return Array
+	 */
+	protected static function property_definitions() {
+		$class = get_called_class();
+		if ( self::class_declares_property( $class, 'properties' ) ) {
+			return static::$properties;
+		}
+		if ( self::class_declares_property( $class, '_properties' ) ) {
+			return static::$_properties;
+		}
+		return static::$properties;
+	}
+
+	/**
+	 * Read an instance property a subclass may still declare with a leading underscore.
+	 *
+	 * @param String $name Current property name, without a leading underscore.
+	 * @return Mixed
+	 */
+	protected function declared_value( $name ) {
+		$class = get_class( $this );
+		if ( self::class_declares_property( $class, $name ) ) {
+			return $this->$name;
+		}
+
+		$legacy = '_' . $name;
+		if ( self::class_declares_property( $class, $legacy ) ) {
+			return $this->$legacy;
+		}
+
+		return $this->$name;
+	}
+
+	/**
+	 * Whether $class_name introduces $property, rather than inheriting it.
+	 *
+	 * @param String $class_name Class name.
+	 * @param String $property   Property name.
+	 * @return Boolean
+	 */
+	private static function class_declares_property( $class_name, $property ) {
+		static $cache = array();
+
+		$key = $class_name . "\0" . $property;
+		if ( array_key_exists( $key, $cache ) ) {
+			return $cache[ $key ];
+		}
+
+		if ( ! property_exists( $class_name, $property ) ) {
+			$cache[ $key ] = false;
+			return false;
+		}
+
+		$ref           = new \ReflectionProperty( $class_name, $property );
+		$cache[ $key ] = ( $class_name === $ref->getDeclaringClass()->getName() );
+		return $cache[ $key ];
+	}
 
 	/**
 	 * A magic method for how to handle var_dump() of this object.
 	 */
 	public function __debugInfo() {
-		return $this->_attrs;
+		return $this->attrs;
 	}
 
 	/**
@@ -59,17 +124,18 @@ abstract class Abstract_Partial implements Partial_Interface {
 	 * @throws \Exception If $property is not valid.
 	 */
 	public function __get( $property ) {
-		if ( ! property_exists( get_called_class(), '_properties' ) || ! isset( static::$_properties[ $property ] ) ) {
+		$definitions = static::property_definitions();
+		if ( ! isset( $definitions[ $property ] ) ) {
 			throw new \Exception( esc_html( '\'' . $property . '\' is not an allowed property.' ) );
 		}
 
 		// Only a true null falls through to the default, so explicitly
 		// set values of '', 0 and false are respected.
-		if ( array_key_exists( $property, $this->_attrs ) && ! is_null( $this->_attrs[ $property ] ) ) {
-			return $this->_attrs[ $property ];
+		if ( array_key_exists( $property, $this->attrs ) && ! is_null( $this->attrs[ $property ] ) ) {
+			return $this->attrs[ $property ];
 		}
 
-		$default = isset( static::$_properties[ $property ]['default'] ) ? static::$_properties[ $property ]['default'] : null;
+		$default = isset( $definitions[ $property ]['default'] ) ? $definitions[ $property ]['default'] : null;
 		return $default;
 	}
 
@@ -83,15 +149,16 @@ abstract class Abstract_Partial implements Partial_Interface {
 	 * @return Boolean
 	 */
 	public function __isset( $property ) {
-		if ( ! isset( static::$_properties[ $property ] ) ) {
+		$definitions = static::property_definitions();
+		if ( ! isset( $definitions[ $property ] ) ) {
 			return false;
 		}
 
-		if ( array_key_exists( $property, $this->_attrs ) && ! is_null( $this->_attrs[ $property ] ) ) {
+		if ( array_key_exists( $property, $this->attrs ) && ! is_null( $this->attrs[ $property ] ) ) {
 			return true;
 		}
 
-		return isset( static::$_properties[ $property ]['default'] );
+		return isset( $definitions[ $property ]['default'] );
 	}
 
 	/**
@@ -103,13 +170,14 @@ abstract class Abstract_Partial implements Partial_Interface {
 	 * @return void
 	 */
 	public function __set( $property, $value ) {
-		if ( ! property_exists( get_called_class(), '_properties' ) || ! isset( static::$_properties[ $property ] ) ) {
+		$definitions = static::property_definitions();
+		if ( ! isset( $definitions[ $property ] ) ) {
 			throw new \Exception( esc_html( '\'' . $property . '\' is not an allowed property.' ) );
 		}
 
 		// Format validation happens in get_invalid_properties(), which
 		// render() consults before output.
-		$this->_attrs[ $property ] = $value;
+		$this->attrs[ $property ] = $value;
 	}
 
 	/**
@@ -130,7 +198,7 @@ abstract class Abstract_Partial implements Partial_Interface {
 	public function __construct( array $params = array() ) {
 		// Only assign properties that were actually supplied, so unsupplied
 		// properties fall through to their declared defaults in __get().
-		foreach ( static::$_properties as $name => $config ) {
+		foreach ( static::property_definitions() as $name => $config ) {
 			if ( array_key_exists( $name, $params ) ) {
 				$this->$name = $params[ $name ];
 			}
@@ -147,11 +215,11 @@ abstract class Abstract_Partial implements Partial_Interface {
 	 * @return Boolean
 	 */
 	public function attempt_acf_ingestion( array $params = array() ) {
-		if ( ! $this->_acf_compatible || ! isset( $params['acf'] ) ) {
+		if ( ! $this->declared_value( 'acf_compatible' ) || ! isset( $params['acf'] ) ) {
 			return;
 		}
 
-		foreach ( static::$_properties as $property_key => $property_config ) {
+		foreach ( static::property_definitions() as $property_key => $property_config ) {
 
 			if ( 'acf' === $property_key ) {
 				continue;
@@ -178,7 +246,7 @@ abstract class Abstract_Partial implements Partial_Interface {
 			return;
 		}
 
-		foreach ( static::$_properties as $property_key => $property_config ) {
+		foreach ( static::property_definitions() as $property_key => $property_config ) {
 			if ( 'acf' === $property_key || ! isset( $property_config['format'] ) ) {
 				continue;
 			}
@@ -188,13 +256,13 @@ abstract class Abstract_Partial implements Partial_Interface {
 				continue;
 			}
 
-			if ( ! array_key_exists( $property_key, $this->_attrs ) ) {
+			if ( ! array_key_exists( $property_key, $this->attrs ) ) {
 				continue;
 			}
 
-			$coerced = wonder_normalize_boolean_value( $this->_attrs[ $property_key ] );
+			$coerced = wonder_normalize_boolean_value( $this->attrs[ $property_key ] );
 			if ( null !== $coerced ) {
-				$this->_attrs[ $property_key ] = $coerced;
+				$this->attrs[ $property_key ] = $coerced;
 			}
 		}
 	}
@@ -231,7 +299,7 @@ abstract class Abstract_Partial implements Partial_Interface {
 	public static function example_snippet() {
 
 		$params_str = '';
-		foreach ( static::$_properties as $name => $config ) {
+		foreach ( static::property_definitions() as $name => $config ) {
 			$params_str .= '\'' . $name . '\' => \'' . ( isset( $config['description'] ) ? $config['description'] : '' ) . '\'' . "\n";
 		}
 
@@ -248,7 +316,7 @@ abstract class Abstract_Partial implements Partial_Interface {
 	 */
 	public static function explain() {
 		echo '<pre>';
-		var_dump( static::$_properties );
+		var_dump( static::property_definitions() );
 		echo '</pre>';
 	}
 
@@ -260,12 +328,9 @@ abstract class Abstract_Partial implements Partial_Interface {
 	public function get_invalid_properties() {
 
 		$invalid_properties = array();
+		$definitions        = static::property_definitions();
 
-		if ( ! isset( static::$_properties ) ) {
-			return $invalid_properties;
-		}
-
-		foreach ( static::$_properties as $key => $config ) {
+		foreach ( $definitions as $key => $config ) {
 			if ( isset( $config['required'] ) && $config['required'] && is_null( $this->$key ) && ! isset( $config['default'] ) ) {
 				$invalid_properties[ $key ] = $config;
 				continue;
@@ -319,7 +384,7 @@ abstract class Abstract_Partial implements Partial_Interface {
 
 		$properties = array();
 
-		foreach ( static::$_properties as $key => $config ) {
+		foreach ( static::property_definitions() as $key => $config ) {
 			$properties[ $key ] = ! is_null( $this->$key ) ? $this->$key : null;
 		}
 
@@ -338,7 +403,7 @@ abstract class Abstract_Partial implements Partial_Interface {
 	}
 
 	/**
-	 * A method to manipulate $_attrs before attempting to display.
+	 * A method to manipulate $attrs before attempting to display.
 	 *
 	 * @return Boolean
 	 */
@@ -463,30 +528,31 @@ abstract class Abstract_Partial implements Partial_Interface {
 	 * usable HTML snippet.
 	 *
 	 * The theme may override the view by shipping a file at the same relative
-	 * path as $_partial_template; otherwise the plugin's copy is used.
+	 * path as $partial_template; otherwise the plugin's copy is used.
 	 *
 	 * @throws \Exception If there is no configured partial template.
 	 *
 	 * @return void
 	 */
 	public function render_into_template() {
-		if ( ! property_exists( $this, '_partial_template' ) || ! $this->_partial_template ) {
+		$template = $this->declared_value( 'partial_template' );
+		if ( ! $template ) {
 			throw new \Exception( 'A partial template has not been provided.' );
 		}
 
 		// Prefer a theme override, then fall back to the plugin's template.
-		$_template_path = locate_template( $this->_partial_template );
-		if ( ! $_template_path && defined( 'WONDERPRESS_CORE_PATH' ) && file_exists( WONDERPRESS_CORE_PATH . $this->_partial_template ) ) {
-			$_template_path = WONDERPRESS_CORE_PATH . $this->_partial_template;
+		$_template_path = locate_template( $template );
+		if ( ! $_template_path && defined( 'WONDERPRESS_CORE_PATH' ) && file_exists( WONDERPRESS_CORE_PATH . $template ) ) {
+			$_template_path = WONDERPRESS_CORE_PATH . $template;
 		}
 
 		if ( ! $_template_path ) {
-			throw new \Exception( esc_html( 'Partial template could not be located: ' . $this->_partial_template ) );
+			throw new \Exception( esc_html( 'Partial template could not be located: ' . $template ) );
 		}
 
 		// Expose each declared property to the template through its getter,
 		// so declared defaults apply to unsupplied properties.
-		foreach ( static::$_properties as $_property_name => $_property_config ) {
+		foreach ( static::property_definitions() as $_property_name => $_property_config ) {
 			${ $_property_name } = $this->{ $_property_name };
 		}
 
