@@ -34,6 +34,44 @@ if ( ! function_exists( 'wonder_token_bridge_kebab' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wonder_token_bridge_wp_segment' ) ) {
+	/**
+	 * Kebab-case one path segment exactly as WordPress names its variables.
+	 *
+	 * WordPress also splits letters from digits, so `h2` prints as `h-2` and
+	 * `2xl` as `2-xl`. Static Kit names keep `h2`, so this is applied only to
+	 * the `--wp--*` side of each declaration.
+	 *
+	 * @param String $segment One settings key or preset slug.
+	 * @return String
+	 */
+	function wonder_token_bridge_wp_segment( $segment ) {
+		if ( function_exists( '_wp_to_kebab_case' ) ) {
+			return _wp_to_kebab_case( $segment );
+		}
+
+		$segment = wonder_token_bridge_kebab( $segment );
+		$segment = preg_replace( '/([a-z])([0-9])/', '$1-$2', $segment );
+		$segment = preg_replace( '/([0-9])([a-z])/', '$1-$2', $segment );
+
+		return trim( preg_replace( '/-+/', '-', $segment ), '-' );
+	}
+}
+
+if ( ! function_exists( 'wonder_token_bridge_wp_path' ) ) {
+	/**
+	 * WordPress variable path for a flattened Static Kit path.
+	 *
+	 * `h2--size-tablet` becomes `h-2--size-tablet`.
+	 *
+	 * @param String $path A path from wonder_token_bridge_flatten() or a preset slug.
+	 * @return String
+	 */
+	function wonder_token_bridge_wp_path( $path ) {
+		return implode( '--', array_map( 'wonder_token_bridge_wp_segment', explode( '--', $path ) ) );
+	}
+}
+
 if ( ! function_exists( 'wonder_token_bridge_flatten' ) ) {
 	/**
 	 * Flatten a settings tree into WordPress custom-property paths.
@@ -142,7 +180,7 @@ if ( ! function_exists( 'wonder_token_bridge_css' ) ) {
 		}
 
 		foreach ( $palette as $slug ) {
-			$declarations[] = '--color-' . $slug . ': var(--wp--preset--color--' . $slug . ');';
+			$declarations[] = '--color-' . $slug . ': var(--wp--preset--color--' . wonder_token_bridge_wp_path( $slug ) . ');';
 		}
 
 		$families = array();
@@ -151,7 +189,7 @@ if ( ! function_exists( 'wonder_token_bridge_css' ) ) {
 		}
 
 		foreach ( $families as $slug ) {
-			$declarations[] = '--font-' . $slug . ': var(--wp--preset--font-family--' . $slug . ');';
+			$declarations[] = '--font-' . $slug . ': var(--wp--preset--font-family--' . wonder_token_bridge_wp_path( $slug ) . ');';
 		}
 
 		$type = array();
@@ -161,7 +199,7 @@ if ( ! function_exists( 'wonder_token_bridge_css' ) ) {
 
 		foreach ( $type as $path ) {
 			$name           = str_replace( '--', '-', $path );
-			$declarations[] = '--type-' . $name . ': var(--wp--custom--type--' . $path . ');';
+			$declarations[] = '--type-' . $name . ': var(--wp--custom--type--' . wonder_token_bridge_wp_path( $path ) . ');';
 		}
 
 		$colors = array();
@@ -171,7 +209,7 @@ if ( ! function_exists( 'wonder_token_bridge_css' ) ) {
 
 		foreach ( $colors as $path ) {
 			$name           = str_replace( '--', '-', $path );
-			$declarations[] = '--color-' . $name . ': var(--wp--custom--color--' . $path . ');';
+			$declarations[] = '--color-' . $name . ': var(--wp--custom--color--' . wonder_token_bridge_wp_path( $path ) . ');';
 		}
 
 		if ( array() === $declarations ) {

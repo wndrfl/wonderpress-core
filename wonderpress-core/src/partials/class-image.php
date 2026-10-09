@@ -20,24 +20,24 @@ class Image extends Abstract_Partial {
 	/**
 	 * Whether this partial accepts an ACF parameter for easy hydration.
 	 *
-	 * @var Boolean $_acf_compatible
+	 * @var Boolean $acf_compatible
 	 */
-	protected $_acf_compatible = true;
+	protected $acf_compatible = true;
 
 	/**
 	 * The view template for this partial. Themes may override it by shipping
 	 * a file at this relative path.
 	 *
-	 * @var String $_partial_template
+	 * @var String $partial_template
 	 */
-	protected $_partial_template = 'partials/image.php';
+	protected $partial_template = 'partials/image.php';
 
 	/**
 	 * A definition of all available properties.
 	 *
-	 * @var Array $_properties
+	 * @var Array $properties
 	 */
-	protected static $_properties = array(
+	protected static $properties = array(
 		'acf'        => array(
 			'description' => 'The ACF array for this partial',
 			'format'      => 'array',
@@ -99,13 +99,13 @@ class Image extends Abstract_Partial {
 	);
 
 	/**
-	 * A method to manipulate $_attrs before attempting to display.
+	 * A method to manipulate $attrs before attempting to display.
 	 *
 	 * @return Boolean
 	 */
 	public function prepare_properties_for_display() {
 
-		if ( isset( $this->_attrs['acf'] ) && is_array( $this->_attrs['acf'] ) ) {
+		if ( isset( $this->attrs['acf'] ) && is_array( $this->attrs['acf'] ) ) {
 
 			// ACF image arrays also have a `sizes` key (width/height map). That
 			// is not the HTML sizes attribute.
@@ -118,7 +118,7 @@ class Image extends Abstract_Partial {
 				$this->src = $src;
 			}
 
-			$attachment_id = isset( $this->_attrs['acf']['ID'] ) ? (int) $this->_attrs['acf']['ID'] : 0;
+			$attachment_id = isset( $this->attrs['acf']['ID'] ) ? (int) $this->attrs['acf']['ID'] : 0;
 
 			// Native srcset/sizes unless the caller already passed art-direction
 			// (an array) or an explicit srcset string.
@@ -162,8 +162,8 @@ class Image extends Abstract_Partial {
 		// alt (correct for decorative images) — never to the image URL.
 		if ( is_null( $this->alt ) || false === $this->alt ) {
 			$stored_alt = '';
-			if ( isset( $this->_attrs['acf']['ID'] ) ) {
-				$stored_alt = get_post_meta( (int) $this->_attrs['acf']['ID'], '_wp_attachment_image_alt', true );
+			if ( isset( $this->attrs['acf']['ID'] ) ) {
+				$stored_alt = get_post_meta( (int) $this->attrs['acf']['ID'], '_wp_attachment_image_alt', true );
 			}
 			$this->alt = $stored_alt ? $stored_alt : '';
 		}
@@ -188,7 +188,7 @@ class Image extends Abstract_Partial {
 	 */
 	protected function attachment_size_name() {
 		$prefixed = 'wonderpress-' . $this->size;
-		$sizes    = isset( $this->_attrs['acf']['sizes'] ) && is_array( $this->_attrs['acf']['sizes'] ) ? $this->_attrs['acf']['sizes'] : array();
+		$sizes    = isset( $this->attrs['acf']['sizes'] ) && is_array( $this->attrs['acf']['sizes'] ) ? $this->attrs['acf']['sizes'] : array();
 
 		if ( ! empty( $sizes[ $prefixed ] ) ) {
 			return $prefixed;
@@ -204,7 +204,7 @@ class Image extends Abstract_Partial {
 	 * @return String|null
 	 */
 	protected function get_acf_size_dimension( $axis ) {
-		$sizes      = isset( $this->_attrs['acf']['sizes'] ) && is_array( $this->_attrs['acf']['sizes'] ) ? $this->_attrs['acf']['sizes'] : array();
+		$sizes      = isset( $this->attrs['acf']['sizes'] ) && is_array( $this->attrs['acf']['sizes'] ) ? $this->attrs['acf']['sizes'] : array();
 		$size       = $this->size;
 		$prefixed   = 'wonderpress-' . $size . '-' . $axis;
 		$unprefixed = $size . '-' . $axis;
@@ -217,8 +217,8 @@ class Image extends Abstract_Partial {
 			return (string) $sizes[ $unprefixed ];
 		}
 
-		if ( isset( $this->_attrs['acf'][ $axis ] ) && '' !== $this->_attrs['acf'][ $axis ] && false !== $this->_attrs['acf'][ $axis ] ) {
-			return (string) $this->_attrs['acf'][ $axis ];
+		if ( isset( $this->attrs['acf'][ $axis ] ) && '' !== $this->attrs['acf'][ $axis ] && false !== $this->attrs['acf'][ $axis ] ) {
+			return (string) $this->attrs['acf'][ $axis ];
 		}
 
 		return null;
@@ -233,7 +233,7 @@ class Image extends Abstract_Partial {
 	 * @return String|null
 	 */
 	protected function get_acf_size_url( $size, $fallback = null ) {
-		$sizes = isset( $this->_attrs['acf']['sizes'] ) && is_array( $this->_attrs['acf']['sizes'] ) ? $this->_attrs['acf']['sizes'] : array();
+		$sizes = isset( $this->attrs['acf']['sizes'] ) && is_array( $this->attrs['acf']['sizes'] ) ? $this->attrs['acf']['sizes'] : array();
 
 		if ( ! empty( $sizes[ 'wonderpress-' . $size ] ) ) {
 			return $sizes[ 'wonderpress-' . $size ];
@@ -243,8 +243,8 @@ class Image extends Abstract_Partial {
 			return $sizes[ $size ];
 		}
 
-		if ( ! empty( $this->_attrs['acf']['url'] ) ) {
-			return $this->_attrs['acf']['url'];
+		if ( ! empty( $this->attrs['acf']['url'] ) ) {
+			return $this->attrs['acf']['url'];
 		}
 
 		return $fallback;
