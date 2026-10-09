@@ -116,4 +116,31 @@ assert( str_contains( $link_html, 'target="_blank"' ), 'new tab target' );
 assert( 1 === preg_match_all( '/\brel="/', $link_html ), 'single rel attribute' );
 assert( str_contains( $link_html, 'noopener' ) && str_contains( $link_html, 'noreferrer' ) && str_contains( $link_html, 'nofollow' ), 'merged rel tokens' );
 
+if ( ! function_exists( 'get_permalink' ) ) {
+	/**
+	 * Stub permalinks so an internal target can beat a leftover url value.
+	 *
+	 * @param mixed $post Post ID or object.
+	 * @return string
+	 */
+	function get_permalink( $post = 0 ) {
+		$id = is_object( $post ) ? (int) $post->ID : (int) $post;
+		return $id > 0 ? 'https://docs.example.test/?p=' . $id : '';
+	}
+}
+
+$internal = new Wonderpress_Core\Partials\Link(
+	array(
+		'acf' => array(
+			'type'                => 'internal',
+			'url'                 => 'https://example.com',
+			'internal_target_obj' => 61,
+			'content'             => 'Get Started',
+		),
+	)
+);
+$internal_html = $internal->render( false );
+assert( str_contains( $internal_html, 'https://docs.example.test/?p=61' ), 'internal target wins over leftover url' );
+assert( ! str_contains( $internal_html, 'https://example.com' ), 'leftover url is not the href' );
+
 fwrite( STDOUT, "link-primitive-test.php OK\n" );
