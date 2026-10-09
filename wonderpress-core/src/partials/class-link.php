@@ -107,7 +107,9 @@ class Link extends Abstract_Partial {
 			}
 		}
 
-		if ( ! $this->url && $this->type ) {
+		// ACF keeps the url value after the editor switches away from Url.
+		// For every other type, the type-specific target is the href.
+		if ( $this->type && 'url' !== $this->type ) {
 			$acf   = isset( $params['acf'] ) && is_array( $params['acf'] ) ? $params['acf'] : array();
 			$built = \wonder_link_url_from_acf( $acf );
 			if ( $built ) {
