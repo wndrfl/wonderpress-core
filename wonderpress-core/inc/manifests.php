@@ -103,6 +103,15 @@ if ( ! function_exists( 'wonder_load_theme_manifests' ) ) {
 
 		if ( is_dir( $manifest_dir ) ) {
 			foreach ( glob( $manifest_dir . DIRECTORY_SEPARATOR . '*.json' ) as $path ) {
+				// The CLI keeps each partial's sync lock beside its manifest,
+				// as `<slug>.lock.json` (CLI 2.17.0+). A lock has no `slug`,
+				// so it was already skipped below — but only after being read
+				// and parsed, once per partial on every page load. It is not
+				// a manifest; do not open it.
+				if ( str_ends_with( $path, '.lock.json' ) ) {
+					continue;
+				}
+
 				$raw = file_get_contents( $path );
 				if ( false === $raw ) {
 					continue;
