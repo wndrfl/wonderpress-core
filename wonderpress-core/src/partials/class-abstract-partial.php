@@ -215,7 +215,7 @@ abstract class Abstract_Partial implements Partial_Interface {
 	 * @return Boolean
 	 */
 	public function attempt_acf_ingestion( array $params = array() ) {
-		if ( ! $this->declared_value( 'acf_compatible' ) || ! isset( $params['acf'] ) ) {
+		if ( ! $this->declared_value( 'acf_compatible' ) || ! isset( $params['acf'] ) || ! is_array( $params['acf'] ) ) {
 			return;
 		}
 
