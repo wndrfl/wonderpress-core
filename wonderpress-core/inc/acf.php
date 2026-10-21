@@ -960,21 +960,43 @@ if ( ! function_exists( 'wonder_partial_props' ) ) {
 	/**
 	 * Constructor args for a PHP-rendered ACF-compatible partial.
 	 *
-	 * Returns `array( 'acf' => get_field( $slug ) )` so existing ingest
+	 * Returns `array( 'acf' => get_field( $field_name ) )` so existing ingest
 	 * hydrates matching properties. Empty when ACF is absent or the field
 	 * has no value.
 	 *
-	 * @param string      $slug        The partial slug.
-	 * @param string|null $instance_id Template composition instance id (ACF group field name).
+	 * `$field_name` is the ACF group field name: the composition row id
+	 * (`wonder_partial_props( 'hero-main' )`), or the partial slug when the
+	 * partial is placed by location rather than composition
+	 * (`wonder_partial_props( 'hero' )`). The wrapping class already names
+	 * the partial, so nothing else is needed.
+	 *
+	 * @since 2.3.0 Takes one argument. The two-argument form
+	 *              `( $slug, $instance_id )` is deprecated: the slug was only a
+	 *              fallback for a missing id.
+	 *
+	 * @param string      $field_name The ACF group field name (composition row id, or partial slug).
+	 * @param string|null $deprecated Formerly the composition instance id. Pass it as the first argument.
 	 * @return array
 	 */
-	function wonder_partial_props( $slug, $instance_id = null ) {
-		if ( ! function_exists( 'get_field' ) ) {
+	function wonder_partial_props( $field_name, $deprecated = null ) {
+		if ( is_string( $deprecated ) && '' !== $deprecated ) {
+			_deprecated_argument(
+				__FUNCTION__,
+				'2.3.0',
+				sprintf(
+					/* translators: %s: composition row id */
+					esc_html__( 'Pass the composition row id as the only argument: wonder_partial_props( \'%s\' ).', 'wonderpress' ),
+					esc_html( $deprecated )
+				)
+			);
+			$field_name = $deprecated;
+		}
+
+		if ( ! function_exists( 'get_field' ) || ! is_string( $field_name ) || '' === $field_name ) {
 			return array();
 		}
 
-		$field_name = ( is_string( $instance_id ) && '' !== $instance_id ) ? $instance_id : $slug;
-		$value      = get_field( $field_name );
+		$value = get_field( $field_name );
 		return is_array( $value ) ? array( 'acf' => $value ) : array();
 	}
 }
