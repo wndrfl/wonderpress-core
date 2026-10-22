@@ -187,3 +187,127 @@ if ( ! function_exists( 'wonder_maybe_dequeue_block_css' ) ) {
 
 	add_action( 'wp_enqueue_scripts', 'wonder_maybe_dequeue_block_css', 100 );
 }
+
+if ( ! function_exists( 'wonder_editor_asset_candidates' ) ) {
+	/**
+	 * Resolve the stylesheet bundles to try for the block editor canvas.
+	 *
+	 * The front end knows its body id because the template file sets it before
+	 * the header runs. The editor never runs a template, so the id is derived
+	 * from what is being edited instead: a page template `template-foo.php`
+	 * maps to the `foo` bundle (the convention every Wonderpress template
+	 * follows), then the post type maps to `page` or `single`, and the shared
+	 * `global` bundle is last, as on the front end.
+	 *
+	 * @param WP_Post|null $post The post being edited, if any.
+	 * @return String[] Theme-relative CSS paths, in priority order.
+	 */
+	function wonder_editor_asset_candidates( $post = null ) {
+		$body_ids = array();
+
+		if ( $post instanceof WP_Post ) {
+			$template = get_page_template_slug( $post );
+
+			if ( is_string( $template ) && '' !== $template ) {
+				$body_id = preg_replace( '/\.php$/i', '', basename( $template ) );
+				$body_id = preg_replace( '/^template-/i', '', $body_id );
+
+				if ( '' !== $body_id ) {
+					$body_ids[] = $body_id;
+				}
+			}
+
+			$body_ids[] = ( 'page' === $post->post_type ) ? 'page' : 'single';
+		}
+
+		$body_ids[] = 'global';
+
+		$candidates = array();
+		foreach ( array_unique( $body_ids ) as $body_id ) {
+			$candidates[] = sprintf( '/static/dist/css/%s.css', $body_id );
+		}
+
+		/**
+		 * Filter the bundle paths tried, in order, for the block editor canvas.
+		 *
+		 * The editor-side counterpart of `wonderpress_asset_candidates`, for
+		 * projects whose build layout differs. Paths are relative to the
+		 * template directory and are tried in order; the first that exists wins.
+		 *
+		 * @param String[]     $candidates Relative CSS paths, in priority order.
+		 * @param WP_Post|null $post       The post being edited, if any.
+		 */
+		return apply_filters( 'wonderpress_editor_asset_candidates', $candidates, $post );
+	}
+}
+
+if ( ! function_exists( 'wonder_enqueue_editor_styles' ) ) {
+	/**
+	 * Load the Static Kit bundle inside the block editor canvas.
+	 *
+	 * Blocks preview through ServerSideRender, so the canvas already shows the
+	 * markup render.php produces on the front end. Without the bundle it shows
+	 * that markup unstyled, and the editor is WYSIWYG in name only.
+	 *
+	 * The canvas is an iframe (every block here is apiVersion 3), and only
+	 * styles enqueued on `enqueue_block_assets` reach it. The hook most people
+	 * reach for, `enqueue_block_editor_assets`, targets the admin document
+	 * around the iframe — where editor-preview.css belongs and this bundle
+	 * does not.
+	 *
+	 * WordPress fires `enqueue_block_assets` twice on an editor screen: once
+	 * for the admin document, and once more while collecting the iframe's
+	 * assets, with `should_load_block_editor_scripts_and_styles` forced to
+	 * false (see _wp_get_iframed_editor_assets()). Only the second pass is
+	 * wanted — on the first, the bundle's reset and `body` rules would restyle
+	 * the admin chrome — so that forced flag is the signal.
+	 *
+	 * Always linked, never inlined: the iframe's assets are collected as
+	 * markup, and wonder_prefer_inline_css() is a front-end delivery choice.
+	 *
+	 * Opt out:
+	 *
+	 *     add_filter( 'wonderpress_editor_styles', '__return_false' );
+	 *
+	 * @return void
+	 */
+	function wonder_enqueue_editor_styles() {
+		if ( ! is_admin() || wp_should_load_block_editor_scripts_and_styles() ) {
+			return;
+		}
+
+		/**
+		 * Filter whether the Static Kit bundle is loaded in the block editor canvas.
+		 *
+		 * @param Boolean $load True to load the bundle.
+		 */
+		if ( ! apply_filters( 'wonderpress_editor_styles', true ) ) {
+			return;
+		}
+
+		$path = null;
+		foreach ( wonder_editor_asset_candidates( get_post() ) as $candidate ) {
+			if ( file_exists( get_template_directory() . $candidate ) ) {
+				$path = $candidate;
+				break;
+			}
+		}
+
+		if ( ! $path ) {
+			return;
+		}
+
+		$absolute = get_template_directory() . $path;
+		$handle   = 'wonderpress-editor-canvas';
+
+		wp_enqueue_style(
+			$handle,
+			get_template_directory_uri() . $path,
+			array(),
+			(string) filemtime( $absolute )
+		);
+		wonder_enqueue_token_bridge( $handle );
+	}
+
+	add_action( 'enqueue_block_assets', 'wonder_enqueue_editor_styles' );
+}
