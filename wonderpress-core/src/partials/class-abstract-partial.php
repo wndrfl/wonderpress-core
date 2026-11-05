@@ -210,6 +210,10 @@ abstract class Abstract_Partial implements Partial_Interface {
 	/**
 	 * A method to attempt to use a provided ACF field to hydrate various properties.
 	 *
+	 * Precedence: explicit constructor arguments override ACF; omitted
+	 * arguments come from ACF. So `array( 'acf' => $link, 'content' => $img )`
+	 * keeps the field's href and new-tab flag but renders $img inside.
+	 *
 	 * @param Array $params The parameters passed into the class.
 	 *
 	 * @return Boolean
@@ -219,21 +223,32 @@ abstract class Abstract_Partial implements Partial_Interface {
 			return;
 		}
 
-		foreach ( static::property_definitions() as $property_key => $property_config ) {
+		$this->hydrate_from_acf( $params );
+		$this->coerce_boolean_properties_from_acf();
+	}
 
-			if ( 'acf' === $property_key ) {
+	/**
+	 * Copy matching keys from $params['acf'] onto properties the caller did not pass.
+	 *
+	 * Uses array_key_exists, so an explicit null or '' still wins over ACF.
+	 *
+	 * @param Array $params The parameters passed into the class.
+	 * @return void
+	 */
+	protected function hydrate_from_acf( array $params ) {
+		if ( ! isset( $params['acf'] ) || ! is_array( $params['acf'] ) ) {
+			return;
+		}
+
+		foreach ( static::property_definitions() as $property_key => $property_config ) {
+			if ( 'acf' === $property_key || array_key_exists( $property_key, $params ) ) {
 				continue;
 			}
 
-			foreach ( $params['acf'] as $acf_key => $acf_value ) {
-				if ( $acf_key === $property_key ) {
-					$this->$property_key = $acf_value;
-					break;
-				}
+			if ( array_key_exists( $property_key, $params['acf'] ) ) {
+				$this->$property_key = $params['acf'][ $property_key ];
 			}
 		}
-
-		$this->coerce_boolean_properties_from_acf();
 	}
 
 	/**

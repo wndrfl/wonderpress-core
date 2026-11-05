@@ -170,4 +170,20 @@ assert( str_contains( $acf_html, 'srcset="' ), 'ACF native srcset' );
 assert( str_contains( $acf_html, 'width="1024"' ) && str_contains( $acf_html, 'height="683"' ), 'ACF size dimensions' );
 assert( str_contains( $acf_html, 'alt="Stored alt"' ), 'ACF falls back to stored alt' );
 
+// WNDRPRS-19: an explicit alt beats the alt stored on the ACF image array.
+$acf_image = array(
+	'ID'  => 12,
+	'url' => 'https://example.com/full.jpg',
+	'alt' => 'Field alt',
+);
+
+$explicit_alt = ( new Image( array( 'acf' => $acf_image, 'alt' => 'Explicit alt' ) ) )->render( false );
+assert( str_contains( $explicit_alt, 'alt="Explicit alt"' ), 'explicit alt overrides ACF alt' );
+
+$decorative = ( new Image( array( 'acf' => $acf_image, 'alt' => '' ) ) )->render( false );
+assert( str_contains( $decorative, 'alt=""' ) && ! str_contains( $decorative, 'Field alt' ), 'explicit empty alt overrides ACF alt' );
+
+$field_alt = ( new Image( array( 'acf' => $acf_image ) ) )->render( false );
+assert( str_contains( $field_alt, 'alt="Field alt"' ), 'omitted alt comes from ACF' );
+
 fwrite( STDOUT, "image-primitive-test.php OK\n" );
