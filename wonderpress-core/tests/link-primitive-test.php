@@ -22,6 +22,7 @@ if ( ! function_exists( '__' ) ) {
 require dirname( __DIR__ ) . '/inc/manifest-property.php';
 require dirname( __DIR__ ) . '/inc/acf.php';
 require dirname( __DIR__ ) . '/inc/link-utils.php';
+require dirname( __DIR__ ) . '/inc/block-attributes.php';
 
 $manifest_path = dirname( __DIR__ ) . '/manifest/partials/link.json';
 $manifest      = json_decode( file_get_contents( $manifest_path ), true );
@@ -142,5 +143,49 @@ $internal = new Wonderpress_Core\Partials\Link(
 $internal_html = $internal->render( false );
 assert( str_contains( $internal_html, 'https://docs.example.test/?p=61' ), 'internal target wins over leftover url' );
 assert( ! str_contains( $internal_html, 'https://example.com' ), 'leftover url is not the href' );
+
+// WNDRPRS-19: explicit arguments override ACF; omitted arguments come from ACF.
+$slide_link = array(
+	'type'                => 'internal',
+	'url'                 => 'https://example.com',
+	'internal_target_obj' => 61,
+	'content'             => 'Get Started',
+	'open_in_new_tab'     => 1,
+	'title'               => 'Stored title',
+	'add_query_params'    => 1,
+	'query_params'        => 'utm=tile',
+);
+$img_html   = '<img src="https://example.com/tile.jpg" alt="">';
+
+$composed      = new Wonderpress_Core\Partials\Link(
+	array(
+		'acf'     => $slide_link,
+		'classes' => array( 'tile-carousel__link' ),
+		'content' => $img_html,
+		'title'   => '',
+	)
+);
+$composed_html = $composed->render( false );
+assert( str_contains( $composed_html, $img_html ), 'explicit content renders inside the link' );
+assert( ! str_contains( $composed_html, 'Get Started' ), 'ACF link text does not replace explicit content' );
+assert( str_contains( $composed_html, 'https://docs.example.test/?p=61' ), 'href still derived from ACF type' );
+assert( str_contains( $composed_html, 'utm=tile' ), 'ACF query params still decorate a derived href' );
+assert( str_contains( $composed_html, 'target="_blank"' ), 'new-tab flag still comes from ACF' );
+assert( str_contains( $composed_html, 'tile-carousel__link' ), 'explicit classes kept' );
+assert( '' === $composed->title, 'explicit empty string overrides ACF value' );
+
+$explicit_url      = new Wonderpress_Core\Partials\Link(
+	array(
+		'acf' => $slide_link,
+		'url' => 'https://override.example/path',
+	)
+);
+$explicit_url_html = $explicit_url->render( false );
+assert( str_contains( $explicit_url_html, 'href="https://override.example/path"' ), 'explicit url is not rebuilt or decorated' );
+assert( str_contains( $explicit_url_html, 'Get Started' ), 'omitted content comes from ACF' );
+
+$acf_only = new Wonderpress_Core\Partials\Link( array( 'acf' => $slide_link ) );
+assert( 'Stored title' === $acf_only->title, 'acf-only call still hydrates every field' );
+assert( str_contains( $acf_only->render( false ), 'Get Started' ), 'acf-only call renders ACF content' );
 
 fwrite( STDOUT, "link-primitive-test.php OK\n" );

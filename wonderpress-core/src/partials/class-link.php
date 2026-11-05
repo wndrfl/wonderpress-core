@@ -81,6 +81,11 @@ class Link extends Abstract_Partial {
 	/**
 	 * A method to attempt to use a provided ACF field to hydrate various properties.
 	 *
+	 * Explicit constructor arguments override ACF; omitted arguments come
+	 * from ACF. The href is built from the field's type (internal, email,
+	 * file, telephone) and decorated with query params only when the caller
+	 * did not pass `url`.
+	 *
 	 * @param Array $params The parameters passed into the class.
 	 *
 	 * @return Boolean
@@ -91,34 +96,23 @@ class Link extends Abstract_Partial {
 			return;
 		}
 
-		if ( isset( $params['acf'] ) ) {
-			foreach ( static::property_definitions() as $property_key => $property_config ) {
+		$this->hydrate_from_acf( $params );
 
-				if ( 'acf' === $property_key ) {
-					continue;
-				}
+		$acf = isset( $params['acf'] ) && is_array( $params['acf'] ) ? $params['acf'] : array();
 
-				foreach ( $params['acf'] as $acf_key => $acf_value ) {
-					if ( $acf_key === $property_key ) {
-						$this->$property_key = $acf_value;
-						break;
-					}
+		if ( ! array_key_exists( 'url', $params ) ) {
+			// ACF keeps the url value after the editor switches away from Url.
+			// For every other type, the type-specific target is the href.
+			if ( $this->type && 'url' !== $this->type ) {
+				$built = \wonder_link_url_from_acf( array_merge( $acf, array( 'type' => $this->type ) ) );
+				if ( $built ) {
+					$this->url = $built;
 				}
 			}
-		}
 
-		// ACF keeps the url value after the editor switches away from Url.
-		// For every other type, the type-specific target is the href.
-		if ( $this->type && 'url' !== $this->type ) {
-			$acf   = isset( $params['acf'] ) && is_array( $params['acf'] ) ? $params['acf'] : array();
-			$built = \wonder_link_url_from_acf( $acf );
-			if ( $built ) {
-				$this->url = $built;
+			if ( $this->url && ! empty( $acf['add_query_params'] ) && ! empty( $acf['query_params'] ) ) {
+				$this->url = \wonder_link_append_query_params( $this->url, $acf['query_params'] );
 			}
-		}
-
-		if ( $this->url && ! empty( $params['acf'] ) && ! empty( $params['acf']['add_query_params'] ) && ! empty( $params['acf']['query_params'] ) ) {
-			$this->url = \wonder_link_append_query_params( $this->url, $params['acf']['query_params'] );
 		}
 
 		$this->coerce_boolean_properties_from_acf();
